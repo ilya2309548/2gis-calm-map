@@ -45,8 +45,14 @@ func main() {
 		c.Next()
 	})
 
-	// Dynamic swagger host fix: override host based on request (helps when accessed via public IP)
+	// Swagger route (covers /swagger, /swagger/, /swagger/index.html, etc.)
 	r.GET("/swagger/*any", func(c *gin.Context) {
+		seg := c.Param("any")        // includes leading '/' unless empty
+		if seg == "" || seg == "/" { // /swagger or /swagger/
+			c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html")
+			return
+		}
+		// Dynamic host override for generated docs
 		h := c.Request.Host
 		if h != "" && !strings.EqualFold(h, docs.SwaggerInfo.Host) {
 			docs.SwaggerInfo.Host = h
