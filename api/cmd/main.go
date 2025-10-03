@@ -2,17 +2,18 @@ package main
 
 import (
 	"log"
+	"net/http"
+	"strings"
 
 	"2gis-calm-map/api/config"
-	_ "2gis-calm-map/api/docs"
+	docs "2gis-calm-map/api/docs"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	"2gis-calm-map/api/internal/db"
 	"2gis-calm-map/api/internal/handler"
-
-	swaggerFiles "github.com/swaggo/files"
 )
 
 // @title 2gis-calm-map API
@@ -26,11 +27,36 @@ func main() {
 	db.Init(cfg)
 
 	r := gin.Default()
-	r.GET("users", handler.GetUsers)
-	r.GET("swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Simple CORS (allow all) – adjust for production.
+	r.Use(func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		c.Header("Access-Control-Allow-Origin", origin)
+		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
+	// Dynamic swagger host fix: override host based on request (helps when accessed via public IP)
+	r.GET("/swagger/*any", func(c *gin.Context) {
+		h := c.Request.Host
+		if h != "" && !strings.EqualFold(h, docs.SwaggerInfo.Host) {
+			docs.SwaggerInfo.Host = h
+		}
+		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
+	})
+
+	r.GET("/users", handler.GetUsers)
 
 	log.Println("start at :8080")
-
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
