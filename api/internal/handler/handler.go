@@ -7,11 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetUsers godoc
 // @Summary Get users
+// @Tags users
 // @Produce json
 // @Success 200 {array} model.User
 // @Router /users [get]
-
 func GetUsers(c *gin.Context) {
 	users := []model.User{
 		{ID: 1, Name: "John Doe", Email: "john@example.com"},

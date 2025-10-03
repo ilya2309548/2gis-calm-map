@@ -28,4 +28,6 @@ paths:
               $ref: '#/definitions/model.User'
             type: array
       summary: Get users
+      tags:
+      - users
 swagger: "2.0"

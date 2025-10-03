@@ -19,11 +19,6 @@ import (
 // @host localhost:8080
 // @BasePath /
 
-// GetUsers godoc
-// @Summary Get users
-// @Produce json
-// @Success 200 {array} model.User
-// @Router /users [get]
 func main() {
 	r := gin.Default()
 
