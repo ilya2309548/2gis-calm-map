@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"2gis-calm-map/api/internal/model"
+	"2gis-calm-map/api/internal/repository"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,9 +14,9 @@ import (
 // @Success 200 {array} model.User
 // @Router /users [get]
 func GetUsers(c *gin.Context) {
-	users := []model.User{
-		{ID: 1, Name: "John Doe", Email: "john@example.com"},
-		{ID: 2, Name: "Jane Doe", Email: "jane@example.com"},
+	users, err := repository.GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 	c.JSON(http.StatusOK, users)
 }
