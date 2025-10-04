@@ -367,6 +367,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/organization/params/average/by-type": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "For every organization of a specified type computes (avg(p1)+...)/N and returns only those with average \u003e threshold (default 3.0).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-params"
+                ],
+                "summary": "Compute averages for each organization of given type",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationsParamsAverageByTypeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationsParamsAverageByTypeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/register": {
             "post": {
                 "description": "Creates a new user and returns a JWT token",
@@ -785,6 +851,58 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.OrganizationWithSelectedAverage": {
+            "type": "object",
+            "properties": {
+                "average": {
+                    "type": "number"
+                },
+                "organization": {},
+                "params": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handler.OrganizationsParamsAverageByTypeRequest": {
+            "type": "object",
+            "required": [
+                "organization_type",
+                "params"
+            ],
+            "properties": {
+                "organization_type": {
+                    "type": "string"
+                },
+                "params": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "threshold": {
+                    "description": "Optional threshold; if omitted, defaults to 3.0",
+                    "type": "number"
+                }
+            }
+        },
+        "handler.OrganizationsParamsAverageByTypeResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.OrganizationWithSelectedAverage"
+                    }
+                },
+                "organization_type": {
+                    "type": "string"
+                }
+            }
+        },
         "handler.RegisterRequest": {
             "type": "object",
             "required": [
@@ -841,6 +959,119 @@ const docTemplate = `{
                 },
                 "owner_id": {
                     "description": "один владелец - одна организация",
+                    "type": "integer"
+                },
+                "params": {
+                    "$ref": "#/definitions/model.OrganizationParams"
+                }
+            }
+        },
+        "model.OrganizationParams": {
+            "type": "object",
+            "properties": {
+                "appearance_avg": {
+                    "type": "number"
+                },
+                "appearance_count": {
+                    "type": "integer"
+                },
+                "appearance_sum": {
+                    "type": "integer"
+                },
+                "calmness_avg": {
+                    "type": "number"
+                },
+                "calmness_count": {
+                    "type": "integer"
+                },
+                "calmness_sum": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "intuitiveness_avg": {
+                    "type": "number"
+                },
+                "intuitiveness_count": {
+                    "type": "integer"
+                },
+                "intuitiveness_sum": {
+                    "type": "integer"
+                },
+                "lighting_avg": {
+                    "type": "number"
+                },
+                "lighting_count": {
+                    "type": "integer"
+                },
+                "lighting_sum": {
+                    "type": "integer"
+                },
+                "organization_id": {
+                    "type": "integer"
+                },
+                "people_density_avg": {
+                    "type": "number"
+                },
+                "people_density_count": {
+                    "type": "integer"
+                },
+                "people_density_sum": {
+                    "type": "integer"
+                },
+                "self_service_avg": {
+                    "type": "number"
+                },
+                "self_service_count": {
+                    "type": "integer"
+                },
+                "self_service_sum": {
+                    "type": "integer"
+                },
+                "signage_avg": {
+                    "type": "number"
+                },
+                "signage_count": {
+                    "type": "integer"
+                },
+                "signage_sum": {
+                    "type": "integer"
+                },
+                "smell_avg": {
+                    "type": "number"
+                },
+                "smell_count": {
+                    "type": "integer"
+                },
+                "smell_sum": {
+                    "type": "integer"
+                },
+                "staff_attitude_avg": {
+                    "type": "number"
+                },
+                "staff_attitude_count": {
+                    "type": "integer"
+                },
+                "staff_attitude_sum": {
+                    "type": "integer"
+                },
+                "tactility_avg": {
+                    "type": "number"
+                },
+                "tactility_count": {
+                    "type": "integer"
+                },
+                "tactility_sum": {
+                    "type": "integer"
+                },
+                "temperature_avg": {
+                    "type": "number"
+                },
+                "temperature_count": {
+                    "type": "integer"
+                },
+                "temperature_sum": {
                     "type": "integer"
                 }
             }

@@ -25,3 +25,9 @@ func UpdateOrganizationByOwner(ownerID uint, updates map[string]interface{}) (mo
 	}
 	return org, nil
 }
+
+func GetOrganizationsByType(orgType string) ([]model.Organization, error) {
+	var orgs []model.Organization
+	err := db.DB.Preload("Params").Where("organization_type = ?", orgType).Find(&orgs).Error
+	return orgs, err
+}
