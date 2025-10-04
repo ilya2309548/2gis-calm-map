@@ -2,6 +2,7 @@ package db
 
 import (
 	"2gis-calm-map/api/config"
+	"2gis-calm-map/api/internal/model"
 	"log"
 
 	"gorm.io/driver/postgres"
@@ -18,4 +19,11 @@ func Init(cfg *config.Config) {
 	DB = database
 
 	log.Println("Database connected")
+
+	// MIGRATION: автоматически создаёт таблицы, если их нет (указываем новые модели через запяту)
+	if err := DB.AutoMigrate(&model.User{}); err != nil {
+		log.Fatal("failed to migrate database: ", err)
+	}
+
+	log.Println("Database connected and migrated")
 }
