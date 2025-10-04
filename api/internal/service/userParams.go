@@ -30,17 +30,17 @@ func (s *UserParamsService) UpdateUserParamsByUserID(userID uint, req interface{
 		updates = v
 	case model.UserParams:
 		updates = map[string]interface{}{
-			"appearance": v.Appearance,
-			"lighting": v.Lighting,
-			"smell": v.Smell,
-			"temperature": v.Temperature,
-			"tactility": v.Tactility,
-			"signage": v.Signage,
-			"intuitiveness": v.Intuitiveness,
+			"appearance":     v.Appearance,
+			"lighting":       v.Lighting,
+			"smell":          v.Smell,
+			"temperature":    v.Temperature,
+			"tactility":      v.Tactility,
+			"signage":        v.Signage,
+			"intuitiveness":  v.Intuitiveness,
 			"staff_attitude": v.StaffAttitude,
 			"people_density": v.PeopleDensity,
-			"self_service": v.SelfService,
-			"calmness": v.Calmness,
+			"self_service":   v.SelfService,
+			"calmness":       v.Calmness,
 		}
 	default:
 		// Попытаемся через reflection не заморачиваясь – пропускаем, оставляем пустым
