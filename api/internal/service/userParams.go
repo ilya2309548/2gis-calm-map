@@ -16,3 +16,7 @@ func NewUserParamsService() *UserParamsService {
 func (s *UserParamsService) CreateUserParams(params model.UserParams) (model.UserParams, error) {
 	return repository.CreateUserParams(params)
 }
+
+func (s *UserParamsService) GetUserParamsByUserID(userID uint) (model.UserParams, error) {
+	return repository.GetUserParamsByUserID(userID)
+}

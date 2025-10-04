@@ -60,6 +60,36 @@ definitions:
         description: например, "user", "admin"
         type: string
     type: object
+  model.UserParams:
+    properties:
+      appearance:
+        type: boolean
+      calmness:
+        type: boolean
+      id:
+        type: integer
+      intuitiveness:
+        type: boolean
+      lighting:
+        type: boolean
+      people_density:
+        type: boolean
+      self_service:
+        type: boolean
+      signage:
+        type: boolean
+      smell:
+        type: boolean
+      staff_attitude:
+        type: boolean
+      tactility:
+        type: boolean
+      temperature:
+        type: boolean
+      user_id:
+        description: Один к одному
+        type: integer
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -119,7 +149,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handler.CreateUserParamsRequest'
+            $ref: '#/definitions/model.UserParams'
         "400":
           description: Invalid input
           schema:
@@ -141,6 +171,45 @@ paths:
       security:
       - BearerAuth: []
       summary: Create user parameters
+      tags:
+      - user-params
+  /user-params/{user_id}:
+    get:
+      description: Returns user evaluation parameters. Requires JWT token.
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.UserParams'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user parameters by user id
       tags:
       - user-params
   /users:
