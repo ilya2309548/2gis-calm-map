@@ -60,6 +60,7 @@ func main() {
 		ginSwagger.WrapHandler(swaggerFiles.Handler)(c)
 	})
 
+	r.POST("/register", handler.Register)
 	r.GET("/users", handler.GetUsers)
 
 	log.Println("start at :8080")

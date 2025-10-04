@@ -16,3 +16,7 @@ func NewUserService() *UserService {
 func (s *UserService) GetAllUsers() ([]model.User, error) {
 	return repository.GetAllUsers()
 }
+
+func (s *UserService) CreateUser(name, email string) (model.User, error) {
+	return repository.CreateUser(name, email)
+}
