@@ -69,6 +69,9 @@ func main() {
 	r.POST("/user-params", middleware.JWTAuth(), handler.CreateUserParams)
 	r.GET("/user-params/:user_id", middleware.JWTAuth(), handler.GetUserParams)
 	r.PATCH("/user-params/:user_id", middleware.JWTAuth(), handler.PatchUserParams)
+	r.POST("/organization", middleware.JWTAuth(), handler.CreateOrganization)
+	r.GET("/organization", middleware.JWTAuth(), handler.GetOrganization)
+	r.PATCH("/organization", middleware.JWTAuth(), handler.PatchOrganization)
 
 	log.Println("start at :8080")
 	if err := r.Run(":8080"); err != nil {

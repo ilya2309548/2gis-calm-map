@@ -40,6 +40,33 @@ definitions:
       token:
         type: string
     type: object
+  handler.OrganizationCreateRequest:
+    properties:
+      address:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      organization_type:
+        type: string
+    required:
+    - address
+    - latitude
+    - longitude
+    - organization_type
+    type: object
+  handler.OrganizationUpdateRequest:
+    properties:
+      address:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      organization_type:
+        type: string
+    type: object
   handler.RegisterRequest:
     properties:
       email:
@@ -62,6 +89,22 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/model.User'
+    type: object
+  model.Organization:
+    properties:
+      address:
+        type: string
+      id:
+        type: integer
+      latitude:
+        type: number
+      longitude:
+        type: number
+      organization_type:
+        type: string
+      owner_id:
+        description: один владелец - одна организация
+        type: integer
     type: object
   model.User:
     properties:
@@ -152,6 +195,146 @@ paths:
       summary: User login
       tags:
       - auth
+  /organization:
+    get:
+      description: Get organization for current user (admin can also fetch for self
+        only here)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get organization (owner self)
+      tags:
+      - organization
+    patch:
+      consumes:
+      - application/json
+      description: Partially update organization (owner/admin)
+      parameters:
+      - description: Fields to update
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.OrganizationUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update organization
+      tags:
+      - organization
+    post:
+      consumes:
+      - application/json
+      description: 'Create organization for current user (1:1). Roles: owner, admin'
+      parameters:
+      - description: Organization data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.OrganizationCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Organization'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create organization
+      tags:
+      - organization
   /register:
     post:
       consumes:
