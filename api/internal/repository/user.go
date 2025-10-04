@@ -16,3 +16,9 @@ func CreateUser(name, email, password, role string) (model.User, error) {
 	err := db.DB.Create(&user).Error
 	return user, err
 }
+
+func GetUserByEmail(email string) (model.User, error) {
+	var user model.User
+	err := db.DB.Where("email = ?", email).First(&user).Error
+	return user, err
+}

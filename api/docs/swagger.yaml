@@ -25,6 +25,21 @@ definitions:
       temperature:
         type: boolean
     type: object
+  handler.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  handler.LoginResponse:
+    properties:
+      token:
+        type: string
+    type: object
   handler.RegisterRequest:
     properties:
       email:
@@ -97,6 +112,46 @@ info:
   title: 2gis-calm-map API
   version: "1.0"
 paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user and returns JWT token
+      parameters:
+      - description: Login credentials (email & password)
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.LoginResponse'
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User login
+      tags:
+      - auth
   /register:
     post:
       consumes:

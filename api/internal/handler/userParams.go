@@ -3,10 +3,13 @@ package handler
 import (
 	"2gis-calm-map/api/internal/model"
 	"2gis-calm-map/api/internal/service"
+	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type CreateUserParamsRequest struct {
@@ -65,6 +68,11 @@ func CreateUserParams(c *gin.Context) {
 		Calmness:      req.Calmness,
 	})
 	if err != nil {
+		// Отлавливаем попытку создать повторно (unique user_id)
+		if strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(strings.ToLower(err.Error()), "duplicate") {
+			c.JSON(http.StatusConflict, gin.H{"error": "user params already exist"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -96,16 +104,26 @@ func GetUserParams(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
 		return
 	}
-	// (Опционально) сверка с токеном:
-	if tokenUID, ok := c.Get("user_id"); ok {
-		if uint(parsed) != tokenUID.(uint) {
-			// Если нужно ограничение – раскомментируйте:
-			// c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-			// return
-		}
+	tokenUID, _ := c.Get("user_id")
+	role, _ := c.Get("role")
+	isOwner := tokenUID != nil && uint(parsed) == tokenUID.(uint)
+	isAdmin := role == "admin"
+	if !isOwner && !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
 	}
 	params, err := userParamsService.GetUserParamsByUserID(uint(parsed))
 	if err != nil {
+		// Если запись не найдена и это владелец — создадим дефолт.
+		if errors.Is(err, gorm.ErrRecordNotFound) && isOwner {
+			created, cerr := userParamsService.CreateUserParams(model.UserParams{UserID: uint(parsed)})
+			if cerr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": cerr.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, created)
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
@@ -138,10 +156,11 @@ func PatchUserParams(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
 		return
 	}
-	// (Опционально) ограничить обновление только своим user_id
+	// Ограничиваем обновление только своим user_id
 	if tokenUID, ok := c.Get("user_id"); ok {
 		if uint(parsed) != tokenUID.(uint) {
-			// c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"}); return
+			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+			return
 		}
 	}
 	var body map[string]interface{}

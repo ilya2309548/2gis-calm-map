@@ -64,6 +64,7 @@ func main() {
 	})
 
 	r.POST("/register", handler.Register)
+	r.POST("/login", handler.Login)
 	r.GET("/users", handler.GetUsers)
 	r.POST("/user-params", middleware.JWTAuth(), handler.CreateUserParams)
 	r.GET("/user-params/:user_id", middleware.JWTAuth(), handler.GetUserParams)

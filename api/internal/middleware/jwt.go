@@ -40,6 +40,9 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 		c.Set("user_id", uint(userID))
+		if role, rok := claims["role"].(string); rok {
+			c.Set("role", role)
+		}
 		c.Next()
 	}
 }

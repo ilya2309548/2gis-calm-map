@@ -15,6 +15,67 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/login": {
+            "post": {
+                "description": "Authenticates user and returns JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User login",
+                "parameters": [
+                    {
+                        "description": "Login credentials (email \u0026 password)",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/register": {
             "post": {
                 "description": "Creates a new user and returns a JWT token",
@@ -333,6 +394,29 @@ const docTemplate = `{
                 },
                 "temperature": {
                     "type": "boolean"
+                }
+            }
+        },
+        "handler.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
                 }
             }
         },
