@@ -11,8 +11,8 @@ func GetAllUsers() ([]model.User, error) {
 	return users, err
 }
 
-func CreateUser(name, email string) (model.User, error) {
-	user := model.User{Name: name, Email: email}
+func CreateUser(name, email, password, role string) (model.User, error) {
+	user := model.User{Name: name, Email: email, Password: password, Role: role}
 	err := db.DB.Create(&user).Error
 	return user, err
 }

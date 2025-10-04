@@ -8,13 +8,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// RegisterRequest — тело запроса для регистрации пользователя
 type RegisterRequest struct {
-	Name  string `json:"name" binding:"required"`
-	Email string `json:"email" binding:"required,email"`
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+	Role     string `json:"role" binding:"required"`
 }
 
 type RegisterResponse struct {
@@ -42,13 +44,13 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	user, err := userServiceReg.CreateUser(req.Name, req.Email)
+	// В реальном проекте: password = hash(req.Password)
+	user, err := userServiceReg.CreateUser(req.Name, req.Email, req.Password, req.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Лучше вынести секрет в .env!
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		secret = "secret"
@@ -56,6 +58,9 @@ func Register(c *gin.Context) {
 
 	claims := jwt.MapClaims{
 		"user_id": user.ID,
+		"name":    user.Name,
+		"email":   user.Email,
+		"role":    user.Role,
 		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 	}
 
@@ -66,6 +71,8 @@ func Register(c *gin.Context) {
 		return
 	}
 
+	// Не отдаём password наружу!
+	user.Password = ""
 	c.JSON(http.StatusOK, RegisterResponse{
 		Token: tokenStr,
 		User:  user,

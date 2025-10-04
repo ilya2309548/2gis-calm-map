@@ -14,6 +14,7 @@ import (
 
 	"2gis-calm-map/api/internal/db"
 	"2gis-calm-map/api/internal/handler"
+	"2gis-calm-map/api/internal/middleware"
 )
 
 // @title 2gis-calm-map API
@@ -21,7 +22,9 @@ import (
 // @description This is a sample server.
 // @host localhost:8080
 // @BasePath /
-
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	cfg := config.LoadConfig()
 	db.Init(cfg)
@@ -62,6 +65,7 @@ func main() {
 
 	r.POST("/register", handler.Register)
 	r.GET("/users", handler.GetUsers)
+	r.POST("/user-params", middleware.JWTAuth(), handler.CreateUserParams)
 
 	log.Println("start at :8080")
 	if err := r.Run(":8080"); err != nil {

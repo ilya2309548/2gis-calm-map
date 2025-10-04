@@ -1,14 +1,45 @@
 basePath: /
 definitions:
+  handler.CreateUserParamsRequest:
+    properties:
+      appearance:
+        type: boolean
+      calmness:
+        type: boolean
+      intuitiveness:
+        type: boolean
+      lighting:
+        type: boolean
+      people_density:
+        type: boolean
+      self_service:
+        type: boolean
+      signage:
+        type: boolean
+      smell:
+        type: boolean
+      staff_attitude:
+        type: boolean
+      tactility:
+        type: boolean
+      temperature:
+        type: boolean
+    type: object
   handler.RegisterRequest:
     properties:
       email:
         type: string
       name:
         type: string
+      password:
+        type: string
+      role:
+        type: string
     required:
     - email
     - name
+    - password
+    - role
     type: object
   handler.RegisterResponse:
     properties:
@@ -24,6 +55,9 @@ definitions:
       id:
         type: integer
       name:
+        type: string
+      role:
+        description: например, "user", "admin"
         type: string
     type: object
 host: localhost:8080
@@ -67,6 +101,48 @@ paths:
       summary: Register new user
       tags:
       - users
+  /user-params:
+    post:
+      consumes:
+      - application/json
+      description: Saves user evaluation parameters. Requires JWT token.
+      parameters:
+      - description: User parameters
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateUserParamsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.CreateUserParamsRequest'
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create user parameters
+      tags:
+      - user-params
   /users:
     get:
       produces:
@@ -81,4 +157,9 @@ paths:
       summary: Get users
       tags:
       - users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

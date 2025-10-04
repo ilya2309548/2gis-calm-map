@@ -61,6 +61,72 @@
                 }
             }
         },
+        "/user-params": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Saves user evaluation parameters. Requires JWT token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user-params"
+                ],
+                "summary": "Create user parameters",
+                "parameters": [
+                    {
+                        "description": "User parameters",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.CreateUserParamsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.CreateUserParamsRequest"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "produces": [
@@ -85,17 +151,63 @@
         }
     },
     "definitions": {
+        "handler.CreateUserParamsRequest": {
+            "type": "object",
+            "properties": {
+                "appearance": {
+                    "type": "boolean"
+                },
+                "calmness": {
+                    "type": "boolean"
+                },
+                "intuitiveness": {
+                    "type": "boolean"
+                },
+                "lighting": {
+                    "type": "boolean"
+                },
+                "people_density": {
+                    "type": "boolean"
+                },
+                "self_service": {
+                    "type": "boolean"
+                },
+                "signage": {
+                    "type": "boolean"
+                },
+                "smell": {
+                    "type": "boolean"
+                },
+                "staff_attitude": {
+                    "type": "boolean"
+                },
+                "tactility": {
+                    "type": "boolean"
+                },
+                "temperature": {
+                    "type": "boolean"
+                }
+            }
+        },
         "handler.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
-                "name"
+                "name",
+                "password",
+                "role"
             ],
             "properties": {
                 "email": {
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 }
             }
@@ -122,8 +234,19 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "role": {
+                    "description": "например, \"user\", \"admin\"",
+                    "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }
