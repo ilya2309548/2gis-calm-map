@@ -72,6 +72,7 @@ func main() {
 	r.POST("/organization", middleware.JWTAuth(), handler.CreateOrganization)
 	r.GET("/organization", middleware.JWTAuth(), handler.GetOrganization)
 	r.PATCH("/organization", middleware.JWTAuth(), handler.PatchOrganization)
+	r.POST("/organization/params/average", middleware.JWTAuth(), handler.GetOrganizationParamsAverage)
 
 	log.Println("start at :8080")
 	if err := r.Run(":8080"); err != nil {

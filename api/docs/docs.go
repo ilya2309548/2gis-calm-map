@@ -292,6 +292,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/organization/params/average": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns (avg(param1)+...)/N for specified params. Requires JWT (admin/owner of org).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-params"
+                ],
+                "summary": "Compute average across selected organization params",
+                "parameters": [
+                    {
+                        "description": "Organization params average request",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationParamsAverageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationParamsAverageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/register": {
             "post": {
                 "description": "Creates a new user and returns a JWT token",
@@ -640,8 +715,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "address",
-                "latitude",
-                "longitude",
                 "organization_type"
             ],
             "properties": {
@@ -656,6 +729,42 @@ const docTemplate = `{
                 },
                 "organization_type": {
                     "type": "string"
+                }
+            }
+        },
+        "handler.OrganizationParamsAverageRequest": {
+            "type": "object",
+            "required": [
+                "organization_id",
+                "params"
+            ],
+            "properties": {
+                "organization_id": {
+                    "type": "integer"
+                },
+                "params": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handler.OrganizationParamsAverageResponse": {
+            "type": "object",
+            "properties": {
+                "average": {
+                    "type": "number"
+                },
+                "organization_id": {
+                    "type": "integer"
+                },
+                "params": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -720,9 +829,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "latitude": {
+                    "description": "optional",
                     "type": "number"
                 },
                 "longitude": {
+                    "description": "optional",
                     "type": "number"
                 },
                 "organization_type": {

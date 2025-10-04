@@ -52,9 +52,31 @@ definitions:
         type: string
     required:
     - address
-    - latitude
-    - longitude
     - organization_type
+    type: object
+  handler.OrganizationParamsAverageRequest:
+    properties:
+      organization_id:
+        type: integer
+      params:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - organization_id
+    - params
+    type: object
+  handler.OrganizationParamsAverageResponse:
+    properties:
+      average:
+        type: number
+      organization_id:
+        type: integer
+      params:
+        items:
+          type: string
+        type: array
     type: object
   handler.OrganizationUpdateRequest:
     properties:
@@ -97,8 +119,10 @@ definitions:
       id:
         type: integer
       latitude:
+        description: optional
         type: number
       longitude:
+        description: optional
         type: number
       organization_type:
         type: string
@@ -335,6 +359,55 @@ paths:
       summary: Create organization
       tags:
       - organization
+  /organization/params/average:
+    post:
+      consumes:
+      - application/json
+      description: Returns (avg(param1)+...)/N for specified params. Requires JWT
+        (admin/owner of org).
+      parameters:
+      - description: Organization params average request
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.OrganizationParamsAverageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.OrganizationParamsAverageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Compute average across selected organization params
+      tags:
+      - organization-params
   /register:
     post:
       consumes:
