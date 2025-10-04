@@ -21,7 +21,7 @@ jobs:
           # port: ${{ secrets.SERVER_PORT }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "api/*"
-          target: "/root/app/api"
+          target: "/root/app"
 
       - name: Deploy and restart docker-compose
         uses: appleboy/ssh-action@v1.0.3
@@ -31,7 +31,7 @@ jobs:
           # port: ${{ secrets.SERVER_PORT }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /root/app
+            cd /root/app/api
             docker compose pull || true
             docker compose build
             docker compose up -d --remove-orphans
