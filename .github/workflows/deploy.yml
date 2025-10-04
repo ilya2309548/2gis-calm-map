@@ -21,7 +21,7 @@ jobs:
           # port: ${{ secrets.SERVER_PORT }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "api/*"
-          target: "/root/app"
+          target: "/root/app/api"
 
       - name: Deploy and restart docker-compose
         uses: appleboy/ssh-action@v1.0.3
