@@ -212,6 +212,58 @@ paths:
       summary: Get user parameters by user id
       tags:
       - user-params
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates user evaluation parameters. Requires JWT token.
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      - description: Fields to update (any subset)
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.CreateUserParamsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.UserParams'
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Partially update user parameters by user id
+      tags:
+      - user-params
   /users:
     get:
       produces:

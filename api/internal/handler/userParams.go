@@ -111,3 +111,64 @@ func GetUserParams(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, params)
 }
+
+// PatchUserParams godoc
+// @Summary Partially update user parameters by user id
+// @Description Partially updates user evaluation parameters. Requires JWT token.
+// @Tags user-params
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param user_id path int true "User ID"
+// @Param input body CreateUserParamsRequest true "Fields to update (any subset)"
+// @Success 200 {object} model.UserParams
+// @Failure 400 {object} map[string]string "Invalid input"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Not found"
+// @Failure 500 {object} map[string]string "Server error"
+// @Router /user-params/{user_id} [patch]
+func PatchUserParams(c *gin.Context) {
+	pathID := c.Param("user_id")
+	if pathID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id required"})
+		return
+	}
+	parsed, err := strconv.ParseUint(pathID, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user_id"})
+		return
+	}
+	// (Опционально) ограничить обновление только своим user_id
+	if tokenUID, ok := c.Get("user_id"); ok {
+		if uint(parsed) != tokenUID.(uint) {
+			// c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"}); return
+		}
+	}
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// Фильтруем допустимые поля (чтобы не обновляли лишнее)
+	allowed := map[string]bool{
+		"appearance": true, "lighting": true, "smell": true, "temperature": true,
+		"tactility": true, "signage": true, "intuitiveness": true, "staff_attitude": true,
+		"people_density": true, "self_service": true, "calmness": true,
+	}
+	filtered := map[string]interface{}{}
+	for k, v := range body {
+		if allowed[k] {
+			filtered[k] = v
+		}
+	}
+	if len(filtered) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no valid fields"})
+		return
+	}
+	params, err := userParamsService.UpdateUserParamsByUserID(uint(parsed), filtered)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	c.JSON(http.StatusOK, params)
+}
