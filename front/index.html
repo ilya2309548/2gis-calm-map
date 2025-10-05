@@ -11,6 +11,8 @@
 		<script>
 			// Временный плейсхолдер. Поставь сюда свой ключ или вынеси его в отдельный файл, не коммить секреты в репозиторий.
 			window.MAPGL_KEY = '285d3b2b-96ab-4fe5-a700-12ef370d7085';
+			// Настройка: авто-открывать диалог создания организации после выбора точки
+			window.AUTO_OPEN_ORG_DIALOG = true; // выстави false если хочешь только кнопку
 			// Храним ссылку на карту и выбранный маркер
 			window.APP = { map: null, selectedMarker: null };
 			const GEOCODER_BASE = 'https://catalog.api.2gis.com/3.0/items/geocode';
@@ -68,39 +70,8 @@
 				});
 				return unique;
 			}
-			function showGeocodeOptions(items){
-				const box = document.getElementById('geocode-options');
-				if (!box) return;
-				box.innerHTML='';
-				const best = buildBestCandidate(items);
-				if (!best.length){
-					box.classList.add('hidden');
-					setAddress('Адрес не найден', true);
-					return;
-				}
-				// Если всего один — просто выбрать
-				if (best.length === 1){
-					const it = best[0];
-					setAddress(it.full_name || it.address_name || it.name || 'Неизвестный объект');
-					box.classList.add('hidden');
-					return;
-				}
-				box.classList.remove('hidden');
-				for (const it of best.slice(0,6)){
-					const btn = document.createElement('button');
-					btn.type='button';
-					btn.className='geo-option';
-					btn.textContent = it.full_name || it.address_name || it.name;
-					btn.addEventListener('click', ()=>{
-						setAddress(btn.textContent, false);
-						box.classList.add('hidden');
-						// Обновим маркер координатами выбранного элемента если есть
-						if (it.point && typeof it.point.lon==='number' && typeof it.point.lat==='number'){
-							placeSelectionMarker(it.point.lon, it.point.lat);
-						}
-					});
-					box.appendChild(btn);
-				}
+			function formatAddress(raw){
+				return (raw||'').replace(/\s+/g,' ').trim();
 			}
 			function placeSelectionMarker(lon, lat) {
 				if (!window.APP.map) return;
@@ -126,31 +97,19 @@
 					window.APP.map = map;
 					new mapgl.Marker(map, { coordinates: [55.31878, 25.23584] });
 					map.on('click', async (e) => {
-						// e.lngLat: [lon, lat]
 						const [lon, lat] = e.lngLat;
 						placeSelectionMarker(lon, lat);
 						setAddressLoading();
 						const { items, error } = await reverseGeocode(lat, lon);
 						if (error) { console.warn('GEOCODER ERROR', error); setAddress(`Адрес не найден (${error})`, true); return; }
-						// Автовыбор лучшего кандидата, чтобы пользователь сразу мог жать "Создать организацию"
-						try {
-							const bestOrdered = buildBestCandidate(items);
-							if (bestOrdered.length) {
-								const top = bestOrdered[0];
-								setAddress(top.full_name || top.address_name || top.name || 'Неизвестный объект');
-								// Если есть несколько вариантов — показать список (до выбора пользователь может изменить)
-								if (bestOrdered.length > 1) {
-									showGeocodeOptions(bestOrdered);
-								} else {
-									const box = document.getElementById('geocode-options');
-									if (box) box.classList.add('hidden');
-								}
-							} else {
-								setAddress('Адрес не найден', true);
-							}
-						} catch(ex) {
-							console.error('Post-process geocode error', ex);
-							setAddress('Ошибка обработки адреса', true);
+						const best = buildBestCandidate(items);
+						if (!best.length){ setAddress('Адрес не найден', true); return; }
+						const top = best[0];
+						const addr = formatAddress(top.full_name || top.address_name || top.name || 'Неизвестный объект');
+						setAddress(addr);
+						// Авто-открытие окна организации (если включено)
+						if (window.AUTO_OPEN_ORG_DIALOG && typeof window.openOrganizationDialog === 'function') {
+							setTimeout(()=>{ try { window.openOrganizationDialog(); } catch(e){ console.warn('openOrganizationDialog failed', e); } }, 50);
 						}
 					});
 				} catch (e) {
@@ -197,7 +156,6 @@
 		<div class="sheet-body">
 			<div class="address-line" style="flex-direction:column; gap:10px;">
 				<span id="selected-address" class="address-pill">Выберите точку на карте</span>
-				<div id="geocode-options" class="geocode-options hidden" aria-label="Варианты адреса"></div>
 				<button id="open-org-dialog" class="button attention-prima small" disabled style="align-self:center;">Создать организацию</button>
 			</div>
 			<section class="block">

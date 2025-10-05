@@ -542,12 +542,6 @@ textarea:focus { outline:2px solid var(--brand--brand); }
 .visually-hidden { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
 body.noscroll { overflow:hidden; }
 
-/* Geocode suggestion list */
-.geocode-options { display:flex; flex-direction:column; gap:6px; background:rgba(255,255,255,0.9); padding:10px 12px; border:1px solid var(--gray--20); border-radius:16px; max-height:220px; overflow-y:auto; box-shadow:0 4px 14px rgba(0,0,0,.15); }
-.geocode-options.hidden { display:none; }
-.geo-option { text-align:left; background:var(--gray--5); border:1px solid var(--gray--20); border-radius:10px; padding:6px 10px; cursor:pointer; font-size:0.7rem; color:var(--brand--dark); transition:background .15s, border-color .15s; }
-.geo-option:hover { background:#fff; border-color:var(--brand--brand); }
-.geo-option:active { background:var(--brand--brand); color:var(--main--light); }
 
 @media (min-width:760px) {
   #feedback-sheet { left:50%; width:520px; transform:translate(-50%, 100%); border-top-left-radius:32px; border-top-right-radius:32px; }
