@@ -124,14 +124,12 @@
 				const mapImg = org.map_path ? `<div class="img-box"><img src="${ORG_API}/organization/${org.id}/image/map" alt="Карта" loading="lazy"></div>` : '';
 				const picImg = org.picture_path ? `<div class="img-box"><img src="${ORG_API}/organization/${org.id}/image/picture" alt="Фото" loading="lazy"></div>` : '';
 				return `
-					<div class="org-info-meta">
-						<div class="lbl">Адрес:</div><div>${org.address||'-'}</div>
-						<div class="lbl">Тип:</div><div>${org.organization_type||'-'}</div>
-						<div class="lbl">ID:</div><div>${org.id}</div>
+					<div class="org-info-top">
+						<div class="org-info-line"><span class="lbl">Адрес:</span> <span class="val addr">${org.address||'-'}</span> <span class="dot">•</span> <span class="lbl">Тип:</span> <span class="val type">${org.organization_type||'-'}</span></div>
+						<div class="org-info-id">ID: <span class="val">${org.id}</span></div>
 					</div>
 					<div class="org-info-images">${mapImg}${picImg}</div>
 					<div class="org-info-average">Среднее: <span class="val">${average}</span></div>
-					<div class="org-info-params">Параметры: ${p}</div>
 					<div class="org-comments-wrapper">
 						<h3 class="org-comments-title">Отзывы</h3>
 						<div id="org-comments" class="org-comments" data-org-id="${org.id}">
