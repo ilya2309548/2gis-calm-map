@@ -1,0 +1,1166 @@
+@import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+:root {
+/* || цвета */
+--color-persimmon: rgba(199, 86, 51, 1);
+--color-burn: rgba(157, 88, 59, 1);
+--color-cedar: rgba(105, 45, 27, 1);
+--color-nettle: rgb(163, 185, 171);
+--color-mint: rgba(79, 118, 94, 1);
+--color-moss: rgb(76, 97, 84);
+--color-pine: rgba(68, 87, 75, 1);
+--color-abyss: rgba(47, 60, 57, 1);
+--color-bergamot: rgba(32, 44, 41, 1);
+--color-pits: rgba(17, 21, 18, 1);
+--color-forecast: rgba(100, 99, 99, 1);
+--color-slush: rgba(136, 136, 136, 1);
+--color-cotton: rgba(217, 217, 217, 1);
+--color-raspberry: rgba(200, 59, 152, 1);
+--color-milkshake: rgba(225, 159, 159, 1);
+
+/* || размеры текста */
+--font-size-h1: 40px;
+--font-size-h2: 35px;
+--font-size-h3: 30px;
+--font-size-h4: 1.3em;
+--font-size-paragraph: 1em;
+
+/* || размеры паддингов */
+--padding-tag-v: calc(var(--font-size-paragraph)/3);
+--padding-tag-h: calc(2*var(--font-size-paragraph)/3);
+--padding-button: calc(2*var(--font-size-paragraph)/3);
+
+}
+
+
+/* || стили текста */
+body {
+  font-family: 'Jost', sans-serif;
+  background-color: var(--color-abyss);
+}
+::selection {
+  background-color: var(--color-burn);
+}
+:disabled {
+  cursor:default !important;
+}
+a {
+  color: var(--color-cotton);
+}
+a:not(.button,.tag,.cat):hover {
+  color: var(--color-slush);
+  cursor: pointer;
+}
+.tc {
+  font-size: var(--font-size-paragraph);
+  font-weight: 400;
+}
+h1 {
+  font-size: var(--font-size-h1);
+  /*font-style: italic;*/
+  font-weight: 400;
+  color: var(--color-cotton);
+  text-align: center;
+}/*замена*/
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: 700;
+  color:var(--color-cotton);
+}
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: 400;
+  color:var(--color-cotton);
+}
+h3 {
+  font-size: var(--font-size-h3);
+  font-weight: 400;
+  color:var(--color-cotton);
+}
+h4 {
+  font-size: var(--font-size-h4);
+  font-weight: 400;
+  color:var(--color-cotton);
+  text-align: center;
+}
+p {
+  font-size: var(--font-size-paragraph);
+  font-weight: 400;
+  color:var(--color-cotton);
+}
+.button {
+  font-size: var(--font-size-paragraph);
+  font-weight: 400;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+
+
+html{
+  overflow-x:hidden;
+  height: 100%;
+}
+
+footer {
+  color: black;
+  width:100%;
+  padding:0;
+  clear:both;
+  bottom:0;
+  position: absolute; //change here   
+}
+/* || строка ввода */
+input{ 
+  padding: var(--padding-tag-h) var(--font-size-paragraph);
+  color: var(--color-cotton);
+  font-size: var(--font-size-paragraph);
+  font-weight: 400;
+  background-color: var(--color-abyss);
+}
+
+input.attention-prima{
+  border: 1px solid var(--color-mint);
+  outline: var(--color-mint);;
+}
+
+input.attention-sec{
+  border-top: 1px solid var(--color-nettle);
+  border-bottom: 1px solid var(--color-nettle);
+  border-left:none;
+  border-right:none;
+  background-color: var(--color-pine);
+  outline: var(--color-mint);;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  color: var(--color-nettle);
+ 
+  font-weight: 200;
+}
+
+label.up {
+  margin-top:-20px;
+}
+
+label.down {
+  margin-bottom:-20px;
+}
+
+
+input:hover {
+  background-color: var(--color-bergamot);
+}
+
+input:disabled {
+  background-color: var(--color-forecast);
+  border: 1px solid var(--color-slush);
+}
+
+input::placeholder {
+  color:var(--color-nettle);
+}
+
+/* || стили кнопок */
+.button {
+  border-radius: 0;
+  color: var(--color-cotton);
+  padding: var(--padding-tag-h) var(--font-size-paragraph);
+  display:flex;
+  height:min-content;
+  width:fit-content;
+  cursor:pointer;
+}
+.button.attention-prima {
+  background-color: var(--color-persimmon);
+  border: none;
+}
+.button.attention-sec {
+  background-color: var(--color-mint);
+  border: none;
+}
+.button.attention-tertia {
+  background-color: var(--color-abyss);
+  border-color: var(--color-nettle);
+  border-style: solid;
+}
+.button.attention-prima:hover {
+  background-color: var(--color-cedar);
+}
+.button.attention-sec:hover {
+  background-color: var(--color-pine);
+}
+.button.attention-tertia:hover {
+  border-color: var(--color-mint);
+}
+.button.attention-prima:active {
+  background-color: var(--color-pits);
+}
+.button.attention-sec:active {
+  background-color: var(--color-bergamot);
+}
+.button.attention-tertia:active {
+  border-color: var(--color-pine);
+}
+.button.attention-prima:disabled {
+  background-color: var(--color-forecast);
+}
+.button.attention-sec:disabled {
+  background-color: var(--color-slush);
+}
+.button.attention-tertia:disabled {
+  border-color: var(--color-slush);
+}
+.hidden{
+  display: none !important;
+}
+.invisible{
+  visibility: hidden !important;
+}
+.button:not(.icon) > ion-icon {
+  margin-left: 0;
+  margin-right: 5px;
+}
+.button.icon {
+  background-color: transparent;
+  border:transparent;
+  color:var(--color-cotton);
+  font-size: 1.5em;
+  padding: 0 0;
+}
+.button.icon:hover{
+  color:var(--color-slush);
+  
+}
+.button.icon:active{
+  color:var(--color-forecast);
+  
+}
+.button.icon:disabled{
+  color:var(--color-slush);
+  
+}
+
+.button.icon.attention-s{
+  color:var(--color-slush);
+  
+}
+.button.icon.attention-s:hover{
+  color:var(--color-forecast);
+}
+.button.icon.attention-s:active{
+  color:var(--color-pits);
+}
+.button.icon.attention-s:disabled{
+  color:var(--color-forecast);
+}
+/* || стили тегов и категорий */
+.tc {
+  text-decoration:none;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  padding:var(--padding-tag-v) var(--padding-tag-h);
+  margin:var(--padding-tag-v) var(--padding-tag-h);
+  cursor: pointer;
+}
+
+.tag {
+  background-color: var(--color-mint);
+  cursor: pointer;
+}
+
+.tag:hover {
+  background-color: var(--color-moss);
+}
+
+.tag-cross {
+  display: none;
+}
+
+.deletable:hover .tag-cross {
+  display: block;
+}
+
+.tag-cross:hover {
+  color:var(--color-slush);
+}
+
+a.cat {
+  display: flex;
+  flex-direction: column;
+}
+
+.cat {
+  border: 2px solid;
+  border-color: var(--color-mint);
+  padding-top: 0;
+  padding-bottom: calc(1.4*var(--font-size-paragraph));
+  height:0.5em;
+  cursor: pointer;
+}
+
+
+.choosable:hover {
+  border-color: var(--color-moss);
+}
+
+.tc > svg {
+  overflow: visible;
+  margin-top: calc(-2*var(--font-size-paragraph));
+  margin-left: -11.5px;
+  fill:none;
+  stroke:var(--color-mint);
+  stroke-width:4.2px;
+  stroke-linecap:square;
+}
+
+.choosable:hover svg {
+  stroke:var(--color-moss);
+}
+
+.add {
+  font-size: 2.2em;
+  text-decoration: none;
+  font-weight:300;
+  color: var(--color-cotton);
+  background-color: var(--color-persimmon);
+  padding: 0;
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  border: none;
+}
+
+.add:hover {
+  background-color: var(--color-burn);
+}
+
+
+/* || стили скролл-баров */
+::-webkit-scrollbar {
+  width: 12px;             
+}
+::-webkit-scrollbar-track {
+  background: var(--color-abyss);        
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-mint);    
+  border: 3px solid var(--color-abyss);  
+}
+
+input[type="checkbox"],[type="range"] {
+  accent-color: var(--color-persimmon);
+}
+
+
+/* Customize the label (the container) */
+/*.container {
+  display: block;
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-size: 22px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+/*.container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Create a custom checkbox */
+/*.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: #eee;
+}
+
+/* On mouse-over, add a grey background color */
+/*.container:hover input ~ .checkmark {
+  background-color: #ccc;
+}
+
+/* When the checkbox is checked, add a blue background */
+/*.container input:checked ~ .checkmark {
+  background-color: #2196F3;
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+/*.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Show the checkmark when checked */
+/*.container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Style the checkmark/indicator */
+/*.container .checkmark:after {
+  left: 9px;
+  top: 5px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+*/
+
+
+/* || меню хэдера */
+header {
+  overflow: hidden;
+  padding: 20px 5px;
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+}
+
+header a{
+  color: var(--color-cotton);
+  text-decoration: none;
+  font-size: var(--font-size-h4);
+}
+/*замена*/
+header a.logo {
+  font-size: var(--font-size-h1);
+  font-style: italic;
+  font-weight: 700;
+}
+
+header a:not(.logo,.button):hover {
+  color:var(--color-slush);
+  text-decoration: underline;
+}
+
+header a.active:not(.logo) {
+  font-weight: 700;
+  color: var(--color-nettle);
+  cursor:default;
+}
+
+header a.active:hover {
+  color:var(--color-cotton);
+  text-decoration: none;
+}
+
+header form {
+  max-width: 300px;
+}
+ /*|| стили диалоговых окон*/
+ dialog {
+  background-color: var(--color-pine);
+  padding: 0;
+  border:3px solid var(--color-pine);
+  position: absolute;
+  left:0;
+  top:100%;
+  z-index: 99;
+  width:max-content;
+}
+
+dialog header {
+  background-color: var(--color-abyss);
+  padding:0 5px;
+  height:40px;
+}
+
+dialog ion-icon {
+  font-size: 1em !important;
+}
+
+dialog header h4 {
+  margin-bottom: 0;
+}
+
+dialog section {
+  padding:5px;
+}
+
+dialog aside{
+  max-height:250px;
+  overflow-Y: scroll;
+}
+
+
+.dropdown-content>aside {
+  max-height:100px;
+  overflow-Y: scroll;
+}
+
+dialog aside .cat {
+  margin-top:1em;
+}
+
+
+
+
+/* || боди */
+body{
+  margin:auto;
+  width:80%;
+  max-width: 1200px;
+}
+
+/* || галлерея */
+.dropdown {
+  margin-left: 8px;
+}
+/*
+@media (min-width: 1440px) {
+  .dropdown {
+    width:1140px;
+  }
+}
+@media only screen and(min-width: 1155px), (max-width: 1440px)  {
+  .dropdown {
+    width:905px;
+  }
+}
+@media (max-width: 1155px) {
+  .dropdown {
+    width:670px;
+  }
+}*/
+
+#gallery {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content:space-between;
+  gap: 20px;
+}
+ 
+.min-img {
+  width: 200px;
+  height: 200px;
+  object-fit:cover;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.min-painting {
+  position: relative;
+}
+
+.min-painting>svg{
+  position: absolute;
+  right:1em;
+  
+}
+
+.min-painting h4 {
+  width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  text-decoration: none;
+}
+
+.painting-info {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top:0.4em;
+}
+
+.min-painting .title {
+  width: auto;
+  padding-right:6px;
+  max-width:140px;
+  margin-top:0;
+  margin-bottom: 0;
+}
+
+.min-painting .year {
+  width:min-content;
+  margin-top:0;
+  margin-bottom: 0;
+}
+
+.min-painting .name {
+  margin-top: 0;
+  margin-bottom:0.5em;
+}
+
+.min-painting{
+  width:min-content;
+  padding:0.5em;
+  text-decoration: none;
+  position:relative;
+  margin-bottom: 3em;
+}
+
+.min-painting>div{
+  position: absolute;
+  margin-left: -0.5em;
+  padding-left: 0.5em;
+}
+
+.min-painting:hover>div{
+  background-color: var(--color-bergamot);
+  z-index: 98;
+}
+
+.min-painting:hover {
+  background-color: var(--color-bergamot);
+}
+
+.min-painting>h4:hover{
+  position: absolute;
+}
+
+.min-painting:hover h4{
+  white-space: wrap;
+  min-width: 200px;
+}
+
+.min-painting:hover img{
+  opacity: 1;
+}
+
+.min-test {
+  width: 200px;
+  height: 200px;
+  text-decoration: none;
+  background-size: cover;
+  display: grid;
+  grid-template-rows:3fr 1fr;
+}
+
+.test-name {
+  margin: auto 0.5em;
+  text-align: left;
+  z-index: 1;
+}
+
+.min-test .button {
+  margin: auto;
+  margin-bottom: 1.5em;
+  z-index: 1;
+}
+
+.min-test div {
+  width: 200px;
+  height: 200px;
+  position:absolute;
+  background-color: rgba(47, 60, 57, 0.75);
+  z-index: 0;
+}
+
+.min-test:hover div {
+  background-color: rgba(17, 21, 18, 0.75);
+}
+
+.min-test:hover h4 {
+  font-weight: 700;
+}
+
+.tests_ready  button {
+  margin:auto;
+  margin-top:30px;
+}
+
+
+
+.create.headers-switch,
+.button.create,
+.tests_ready_main .headers-switch {
+  width:fit-content;
+  margin:auto;
+}
+
+/* || Фильтр и дропдаун*/
+#myDropdown {
+  width:300px;
+}
+
+.button-dropdown {
+  background-color: var(--color-mint);
+  border-style: none;
+  width: auto;
+  display: flex;
+  justify-content: space-between;
+  text-transform:none;
+}
+
+.button-dropdown:hover{
+  background-color: var(--color-moss);
+}
+
+.button-dropdown:after {
+  content: "";
+  background-color: var(--color-nettle);
+  background-repeat: no-repeat;
+  height:15px;
+  width:30px;
+  margin-top: 10px;
+}
+
+.button-dropdown.up:after{
+  mask-image: url( "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'  %3E%3Cpath d='m91.9 132.2-6.5-6.4-6.4 6.4' transform='translate(-78.4 -124.5)'/%3E%3C/svg%3E" );
+  -webkit-mask-image: url( "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'  %3E%3Cpath d='m91.9 132.2-6.5-6.4-6.4 6.4' transform='translate(-78.4 -124.5)'/%3E%3C/svg%3E" );
+}
+
+.button-dropdown.down:after{
+  mask-image: url( "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'  %3E%3Cpath d='M153.5 23.5v9.1h-9.1' transform='rotate(45 111.1 -156.9)'/%3E%3C/svg%3E" );
+  -webkit-mask-image: url( "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'  %3E%3Cpath d='M153.5 23.5v9.1h-9.1' transform='rotate(45 111.1 -156.9)'/%3E%3C/svg%3E" );
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+  position: relative;
+  margin-bottom: 2em;
+}
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: var(--color-pine);
+  padding:20px;
+  z-index: 1;
+}
+
+#myDropdown>section>.dropdown-content>form {
+  margin-top:-20px;
+  margin-bottom: 0;
+}
+
+.dropdown-content section {
+  
+  max-height:70vh;
+  overflow-Y: scroll;
+}
+
+.dropdown-content>section>.dropdown-content {
+  position: relative;
+  background-color: var(--color-moss);
+}
+
+.pressed {
+  background-color: var(--color-moss);
+}
+
+/* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
+.show {display:block;}
+
+.dropdown-content>aside>label {
+  display: inline-block;
+  width: 200px;
+  font-weight:400;
+  color:var(--color-cotton);
+}
+
+/*|| страница авторизации*/
+.headers-switch {
+  display: flex;
+  flex-direction: row;
+  margin-right: 10%;
+  gap:5px;
+}
+/*замена*/
+.headers-switch h1 {
+  margin-bottom:0;
+  margin-top: 0;
+  text-decoration: none;
+  color:var(--color-cotton);
+}
+
+.headers-switch #no-style {
+  text-decoration: none;
+  color:var(--color-mint);
+  font-weight: 400;
+}
+
+.headers-switch a.goto {
+  text-decoration: underline;
+  color:var(--color-mint);
+  font-weight: 400;
+  cursor:pointer;
+  font-size: var(--font-size-h1);
+}
+
+.headers-switch a.goto:hover {
+  color:var(--color-pine);
+}
+
+
+.authorisation {
+  max-width:500px;
+  margin:auto;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.authorisation ion-icon {
+  margin-left:-30px;
+}
+
+
+.authorisation input {
+  margin-bottom:30px;
+  width:380px;
+}
+
+.authorisation>a {
+  margin-bottom: 15px;
+}
+
+
+/*|| контейнер тегов и категорий*/
+#tag-and-cat {
+  display: flex;
+  flex-direction: row;
+  grid-column: 1;
+  grid-row: 2;
+  margin-top: -45px;
+}
+
+#tag-and-cat>h4,
+.container-p>h4 {
+  color: var(--color-slush);
+  margin-bottom: 0;
+}
+
+#tag-and-cat .tag {
+  margin-right:0;
+}
+
+#tag-and-cat .cat {
+  margin-left:0;
+}
+
+#tag-and-cat > .container-p {
+  display: flex;
+  gap:10px;
+  flex-direction:column;
+}
+
+.tag-p {
+  align-items:end;
+  position: relative;
+  height:fit-content;
+}
+
+.cat-p {
+  align-items:baseline;
+  padding-left: 0;
+}
+
+.picture_main {
+  display: grid;
+  width: 100%;
+  height: 100vh;
+  grid-template-columns: 1fr 4fr 1fr;
+  grid-template-rows: 1fr 8fr;
+}
+/*замена*/
+.headers > h1,h3 {
+  margin-bottom:0;
+  margin-top: 0;
+  width:max-content;
+}
+
+.picture_bookmark {
+  grid-column: 2;
+  grid-row: 2;
+  cursor:zoom-in;
+}
+
+.upper-panel {
+  display: flex;
+  flex-direction:row;
+  justify-content: space-between;
+  align-items: center;
+  grid-column: 2;
+  grid-row: 1;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.upper-panel ion-icon {
+  color: var(--color-cotton);
+  font-size: 3em;
+}
+
+.upper-panel ion-icon:hover {
+  color:var(--color-slush);
+  cursor:pointer;
+}
+
+.picture_bookmark {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.bookmark_link {
+  grid-column: 1;
+  grid-row: 1;
+  display:flex;
+  justify-self: flex-end;
+  margin-right:30px;
+  height: fit-content;
+}
+
+.bookmark {
+  stroke-width:10;
+  stroke-linecap:butt;
+  cursor: pointer;
+  stroke:var(--color-cotton);
+}
+
+svg.off {
+  fill:none;
+}
+
+svg.off:hover {
+  stroke:var(--color-milkshake);
+}
+
+svg.on {
+  fill:var(--color-persimmon);
+}
+
+svg.on:hover {
+  fill:var(--color-burn);
+  stroke:var(--color-milkshake);
+}
+
+.picture_bookmark > img {
+  max-width: 900px;
+  max-height: 700px;
+  width: 100%;
+  grid-column: 1;
+  grid-row: 1;
+}
+#full-image{
+  position:absolute;
+  top:0;
+  left:0;
+  
+}
+#full-image img {
+  max-width:100vw;
+  max-height: 100vh;
+}
+/* || страница теста */
+.test_main {
+  display: grid;
+  width: 100%;
+  height: 70vh;
+  grid-template-columns: 1fr 4fr 1fr;
+  grid-template-rows: 1fr 7fr 1fr;
+}
+
+aside p {
+  text-align: center;
+}
+
+.answer-variants {
+  grid-column:2;
+  grid-row: 4;
+  display: flex;
+  justify-content: center;
+  
+}
+
+.test_page img {
+  max-width: fit-content;
+  max-height:60vh;
+  grid-column:2;
+  grid-row: 3;
+  margin:0 auto;
+  margin-bottom:20px;
+}
+/*замена*/
+.test_page h1 {
+  margin:0 auto;
+  text-align: center;
+}
+
+.test_main>button {
+  grid-column:1;
+  grid-row:4;
+  
+}
+
+/* || диалог создание тегов */
+
+form{
+  margin-bottom: 20px;
+}
+
+#create_tc {
+  max-width: 300px;
+  left:45px;
+}
+
+#create_tc .tc {
+  margin-left: 0;
+}
+
+#tag-create {
+  display: inline-block;
+  margin-left: 10px;
+  background-color: var(--color-pine);
+}
+
+
+.test-item {
+  width:320px;
+  position: relative;
+}
+
+.test-item h4 {
+  text-align: left;
+}
+
+#tests_create {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  row-gap: 50px;
+}
+
+main.stat {
+  margin:auto;
+  width: 28.5em;
+}
+
+main.stat > h4 {
+  text-align:left;
+  margin-top: 0;
+}
+
+main.stat > div {
+  position: relative;
+  width:200px;
+}
+
+main.stat > div > a {
+  margin-left: 0;
+}
+
+main.stat > button {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+#options {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height:180px;
+  padding: 5px;
+}
+
+.pie-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.test-end {
+  margin:auto;
+  max-width:800px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  height:570px;
+}
+
+.test-end article{
+  display: flex;
+  flex-direction: column;
+  align-items:flex-end;
+  margin-right:20px;
+}
+
+.test-end.wrong {
+  flex-direction: row;
+  flex-wrap: wrap;
+  max-width: min-content;
+  justify-content: center;
+}
+/*замена*/
+.test-end.wrong h1 {
+  white-space: nowrap;
+}
+
+.test-end.wrong article {
+  width:300px;
+}
+/*замена*/
+.test-end > h1,h4 {
+ margin-top:0;
+} 
+/*замена*/
+.test-end > h1,h3 {
+  margin-bottom:3px;
+ } 
+
+.test-end > h4 {
+  margin-bottom:7px;
+}
+
+ .test-end > img,
+ .test-end > p,
+ .test-end > .answer-variants,
+ .test-end > label{
+  width:400px;
+ }
+
+ .test-end > .answer-variants{
+  justify-content: space-between;
+ }
+
+ .test-end > p {
+  text-align: center;
+ }
+
+#create_comment {
+  width:400px;
+  height:400px;
+}
+
+#create_comment textarea {
+  width:395px;
+  height:300px;
+}
+
+#create_comment>.button {
+  margin:auto;
+}
+
+label {
+  display: block;
+}
+
