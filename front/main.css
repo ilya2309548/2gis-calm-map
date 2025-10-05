@@ -102,7 +102,7 @@ h3 {
   color:var(--color-cotton);
 }
 
-p, ::placeholder {
+p, ::placeholder, a {
   font-size: var(--body--medium);
   font-weight: 400;
   color:var(--color-cotton);
@@ -131,6 +131,11 @@ main {
   display: flex;
   flex-direction: column;
   gap:150px;
+}
+
+main.login {
+  align-items: center;
+  margin-top:400px;
 }
 
 
@@ -168,9 +173,9 @@ footer {
 
 /* || строка ввода */
 input{ 
-  padding: var(--padding-tag-h) var(--font-size-paragraph);
+  padding: 1em;
+  font-size: 2em;
   color: var(--color-cotton);
-  font-size: var(--font-size-paragraph);
   font-weight: 400;
   background-color: var(--color-abyss);
 }
@@ -192,11 +197,12 @@ input.attention-sec{
 form {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 2em;
 }
 
 label {
-  color: var(--color-nettle);
- 
+ font-size: var(--body--medium);
   font-weight: 200;
 }
 
@@ -210,7 +216,6 @@ label.down {
 
 
 input:hover {
-  background-color: var(--color-bergamot);
 }
 
 input:disabled {
