@@ -525,6 +525,19 @@ label {
 .org-info-average { font-size:0.8rem; }
 .org-info-average .val { font-weight:600; color:var(--brand--brand); }
 
+/* Comments section */
+.org-comments-wrapper { margin-top:4px; display:flex; flex-direction:column; gap:8px; }
+.org-comments-title { margin:4px 0 0 0; font-size:0.9rem; font-weight:600; color:var(--brand--dark); }
+.org-comments { display:flex; flex-direction:column; gap:10px; max-height:240px; overflow-y:auto; padding-right:4px; }
+.comment-item { display:flex; gap:10px; background:var(--gray--5); border:1px solid var(--gray--20); border-radius:14px; padding:10px 12px; position:relative; }
+.comment-item .cmt-val { flex-shrink:0; align-self:flex-start; background:var(--brand--brand); color:#fff; font-size:0.65rem; font-weight:600; line-height:1; padding:6px 8px; border-radius:10px; min-width:34px; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,.18); }
+.comment-item .cmt-main { display:flex; flex-direction:column; gap:4px; font-size:0.7rem; line-height:1.25; }
+.comment-item .cmt-user { font-weight:600; color:var(--brand--dark); font-size:0.65rem; letter-spacing:.04em; text-transform:uppercase; }
+.comment-item .cmt-text { white-space:pre-wrap; word-break:break-word; }
+.org-comments-loading, .org-comments-empty, .org-comments-error { font-size:0.65rem; color:var(--gray--70); margin:0; }
+.org-comments-error { color:var(--danger--medium); }
+.comment-item .muted { color:var(--gray--50); font-style:italic; }
+
 /* Overlay */
 .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.25); opacity:0; visibility:hidden; transition:opacity .25s; z-index:15; }
 .overlay.visible { opacity:1; visibility:visible; }
@@ -594,3 +607,29 @@ body.noscroll { overflow:hidden; }
   .rating-scale .button img { width:24px; height:24px; }
   .fab { width:56px; height:56px; font-size:24px; }
 }
+
+/* Added: smaller close button variant */
+.icon-close.small { font-size:16px; top:10px; right:10px; }
+
+/* Added: quick comment area under organization info */
+.org-quick-comment { margin:0 0 4px 0; border-top:1px solid var(--gray--10); padding-top:10px; display:flex; flex-direction:column; gap:8px; }
+.org-quick-comment .oqc-text { width:100%; border:1px solid var(--gray--30); border-radius:12px; padding:8px 10px; font-size:0.7rem; font-family:inherit; resize:vertical; }
+.org-quick-comment .oqc-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.org-quick-comment .button.small { font-size:0.6rem; padding:6px 10px; }
+.oqc-status { min-height:14px; font-size:0.6rem; }
+.oqc-status.saving { color:var(--gray--70); }
+.oqc-status.error { color:var(--danger--medium); }
+.oqc-status.ok { color:var(--brand--brand); }
+
+/* Added: detailed rating dialog */
+.org-dialog--detail { width:min(760px,96%); max-height:90%; overflow:hidden; }
+.org-dialog--detail form { overflow:hidden; display:flex; flex-direction:column; gap:18px; }
+.detail-field textarea { width:100%; border:1px solid var(--gray--30); border-radius:12px; padding:10px 12px; font-size:0.75rem; font-family:inherit; }
+.detail-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:14px; max-height:360px; overflow:auto; padding-right:4px; }
+.crit { display:flex; flex-direction:column; gap:6px; background:var(--gray--5); border:1px solid var(--gray--10); border-radius:14px; padding:10px 12px; }
+.crit label { font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--brand--dark); margin:0; }
+.crit select { border:1px solid var(--gray--30); border-radius:10px; padding:6px 8px; font-size:0.65rem; background:#fff; }
+.crit textarea { border:1px solid var(--gray--20); border-radius:10px; padding:6px 8px; font-size:0.65rem; resize:vertical; font-family:inherit; }
+.detail-footer { display:flex; justify-content:space-between; align-items:center; gap:14px; }
+.detail-actions { display:flex; gap:10px; }
+.detail-status { font-size:0.65rem; min-height:1em; }

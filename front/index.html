@@ -132,6 +132,12 @@
 					<div class="org-info-images">${mapImg}${picImg}</div>
 					<div class="org-info-average">Среднее: <span class="val">${average}</span></div>
 					<div class="org-info-params">Параметры: ${p}</div>
+					<div class="org-comments-wrapper">
+						<h3 class="org-comments-title">Отзывы</h3>
+						<div id="org-comments" class="org-comments" data-org-id="${org.id}">
+							<p class="org-comments-loading">Загрузка отзывов...</p>
+						</div>
+					</div>
 				`;
 			}
 			function openOrgInfoDialog(org, avg){
@@ -144,6 +150,9 @@
 				dialog.removeAttribute('aria-hidden');
 				overlay.classList.add('visible');
 				overlay.removeAttribute('aria-hidden');
+				// После открытия — загрузить отзывы
+				loadOrganizationComments(org.id);
+				prepareQuickComment(org.id);
 			}
 			function closeOrgInfoDialog(){
 				const dialog = document.getElementById('org-info-dialog');
@@ -154,6 +163,113 @@
 				overlay.classList.remove('visible');
 				overlay.setAttribute('aria-hidden','true');
 			}
+						// ====== Комментарии организации ======
+						async function loadOrganizationComments(orgId){
+							const wrap = document.getElementById('org-comments');
+							if(!wrap) return;
+							wrap.innerHTML = '<p class="org-comments-loading">Загрузка отзывов...</p>';
+							const token = getToken();
+							if(!token){
+								wrap.innerHTML = '<p class="org-comments-empty">Чтобы увидеть отзывы, войдите.</p>';
+								return;
+							}
+							try {
+								const res = await fetch(`${ORG_API}/organization/${orgId}/comments`, { headers:{ Authorization:'Bearer '+token }});
+								if(!res.ok){
+									wrap.innerHTML = '<p class="org-comments-error">Не удалось загрузить отзывы</p>';
+									return;
+								}
+								const data = await res.json();
+								const items = Array.isArray(data.items)? data.items: [];
+								if(!items.length){
+									wrap.innerHTML = '<p class="org-comments-empty">Пока нет отзывов</p>';
+									return;
+								}
+								wrap.innerHTML = items.map(renderCommentItem).join('');
+							} catch(e){
+								wrap.innerHTML = '<p class="org-comments-error">Ошибка загрузки</p>';
+							}
+						}
+						function renderCommentItem(item){
+							const hasVal = typeof item.avg_val === 'number' && item.avg_val > 0;
+							const val = hasVal ? `<span class="cmt-val" title="Средняя оценка">${Number(item.avg_val).toFixed(1)}</span>` : '';
+							const user = (item.user_name||'—').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+							const text = (item.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+							return `<div class="comment-item">${val}<div class="cmt-main"><div class="cmt-user">${user}</div><div class="cmt-text">${text||'<em class=\"muted\">(без текста)</em>'}</div></div></div>`;
+						}
+						// ===== Быстрый комментарий =====
+						function prepareQuickComment(orgId){
+							const input = document.getElementById('quick-comment-text');
+							const sendBtn = document.getElementById('quick-comment-send');
+							const status = document.getElementById('quick-comment-status');
+							const detBtn = document.getElementById('open-detailed-comment');
+							if(!input || !sendBtn){ return; }
+							input.value=''; status.textContent=''; sendBtn.disabled = true;
+							input.oninput = ()=>{ sendBtn.disabled = !input.value.trim(); };
+							sendBtn.onclick = async ()=>{
+								const text = input.value.trim();
+								if(!text) return;
+								const token = getToken();
+								if(!token){ status.textContent='Войдите чтобы отправить'; status.className='oqc-status error'; return; }
+								sendBtn.disabled = true; status.textContent='Отправка...'; status.className='oqc-status saving';
+								try {
+									const payload = { organization_id: orgId, text };
+									const res = await fetch(`${ORG_API}/organization/comment`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body: JSON.stringify(payload) });
+									if(!res.ok){ const js = await res.json().catch(()=>({})); status.textContent = js.error||'Ошибка'; status.className='oqc-status error'; sendBtn.disabled=false; return; }
+									status.textContent='Отправлено'; status.className='oqc-status ok'; input.value='';
+									// перезагрузить комментарии
+									loadOrganizationComments(orgId);
+								} catch(e){ status.textContent='Ошибка сети'; status.className='oqc-status error'; sendBtn.disabled=false; }
+							};
+							if(detBtn){ detBtn.onclick = ()=> openDetailedDialog(orgId); }
+						}
+						// ===== Детальная форма =====
+						function openDetailedDialog(orgId){
+							const dlg = document.getElementById('detail-dialog');
+							const ov = document.getElementById('detail-overlay');
+							if(!dlg||!ov) return;
+							document.getElementById('detail-org-id').value = orgId;
+							dlg.classList.add('open'); dlg.removeAttribute('aria-hidden');
+							ov.classList.add('visible'); ov.removeAttribute('aria-hidden');
+						}
+						function closeDetailedDialog(){
+							const dlg = document.getElementById('detail-dialog');
+							const ov = document.getElementById('detail-overlay');
+							if(!dlg||!ov) return;
+							dlg.classList.remove('open'); dlg.setAttribute('aria-hidden','true');
+							ov.classList.remove('visible'); ov.setAttribute('aria-hidden','true');
+						}
+						document.addEventListener('click',(e)=>{
+							if(e.target && (e.target.id==='detail-close' || e.target.id==='detail-cancel' || e.target.id==='detail-overlay')) closeDetailedDialog();
+						});
+						document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeDetailedDialog(); }});
+						document.addEventListener('submit', async (e)=>{
+							if(e.target && e.target.id==='detail-form'){
+								e.preventDefault();
+								const form = e.target;
+								const statusEl = document.getElementById('detail-status');
+								const token = getToken();
+								if(!token){ statusEl.textContent='Нужно войти'; statusEl.className='detail-status error'; return; }
+								statusEl.textContent='Отправка...'; statusEl.className='detail-status saving';
+								const fd = new FormData(form);
+								const payload = { organization_id: Number(fd.get('organization_id')) };
+								const text = (fd.get('text')||'').toString().trim(); if(text) payload.text=text;
+								const keys = ['appearance','lighting','smell','temperature','tactility','signage','intuitiveness','staff_attitude','people_density','self_service','calmness'];
+								for(const k of keys){
+									const v = fd.get(k+'_value');
+									const c = fd.get(k+'_comment');
+									if(v){ payload[k+'_value'] = Number(v); }
+									if(c && c.toString().trim()) payload[k+'_comment'] = c.toString().trim();
+								}
+								try {
+									const res = await fetch(`${ORG_API}/organization/comment`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body: JSON.stringify(payload) });
+									if(!res.ok){ const js = await res.json().catch(()=>({})); statusEl.textContent = js.error||'Ошибка'; statusEl.className='detail-status error'; return; }
+									statusEl.textContent='Готово'; statusEl.className='detail-status ok';
+									loadOrganizationComments(payload.organization_id);
+									setTimeout(()=>{ closeDetailedDialog(); }, 500);
+								} catch(err){ statusEl.textContent='Сеть: '+err.message; statusEl.className='detail-status error'; }
+							}
+						});
 			document.addEventListener('click', (e)=>{
 				if (e.target && (e.target.id === 'org-info-close' || e.target.id === 'org-info-ok' || e.target.id === 'org-info-overlay')) closeOrgInfoDialog();
 			});
@@ -375,15 +491,106 @@
 	<div id="org-info-dialog" class="org-dialog org-dialog--info" role="dialog" aria-modal="true" aria-labelledby="org-info-title" aria-hidden="true">
 		<div class="org-dialog__header">
 			<h2 id="org-info-title">Организация</h2>
-			<button class="icon-close" id="org-info-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
+			<button class="icon-close small" id="org-info-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
 		</div>
 		<div class="org-info-body" id="org-info-body">
 			<p class="small">Загрузка...</p>
+		</div>
+		<div class="org-quick-comment" id="org-quick-comment" aria-live="polite">
+			<div class="oqc-row">
+				<textarea id="quick-comment-text" class="oqc-text" placeholder="Краткий отзыв" rows="2" maxlength="500"></textarea>
+			</div>
+			<div class="oqc-actions">
+				<button type="button" class="button attention-prima small" id="quick-comment-send" disabled>Отправить</button>
+				<button type="button" class="button attention-tertia small" id="open-detailed-comment">Оценить заведение</button>
+			</div>
+			<div class="oqc-status" id="quick-comment-status"></div>
 		</div>
 		<div class="org-dialog__footer">
 			<button type="button" class="button attention-tertia ghost" id="org-info-ok">Закрыть</button>
 		</div>
 	</div>
+
+<!-- Детализированная оценка -->
+<div id="detail-overlay" class="overlay" aria-hidden="true"></div>
+<div id="detail-dialog" class="org-dialog org-dialog--detail" role="dialog" aria-modal="true" aria-labelledby="detail-title" aria-hidden="true">
+	<div class="org-dialog__header">
+		<h2 id="detail-title">Оценка заведения</h2>
+		<button class="icon-close small" id="detail-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
+	</div>
+	<form id="detail-form" novalidate>
+		<input type="hidden" name="organization_id" id="detail-org-id" />
+		<div class="detail-field">
+			<label for="detail-text">Общий отзыв</label>
+			<textarea id="detail-text" name="text" rows="3" placeholder="Общее впечатление"></textarea>
+		</div>
+		<div class="detail-grid" id="detail-grid">
+			<!-- параметры: value (1-5) + comment -->
+			<div class="crit" data-key="appearance">
+				<label>Appearance</label>
+				<select name="appearance_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="appearance_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="lighting">
+				<label>Lighting</label>
+				<select name="lighting_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="lighting_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="smell">
+				<label>Smell</label>
+				<select name="smell_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="smell_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="temperature">
+				<label>Temperature</label>
+				<select name="temperature_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="temperature_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="tactility">
+				<label>Tactility</label>
+				<select name="tactility_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="tactility_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="signage">
+				<label>Signage</label>
+				<select name="signage_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="signage_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="intuitiveness">
+				<label>Intuitiveness</label>
+				<select name="intuitiveness_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="intuitiveness_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="staff_attitude">
+				<label>StaffAttitude</label>
+				<select name="staff_attitude_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="staff_attitude_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="people_density">
+				<label>PeopleDensity</label>
+				<select name="people_density_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="people_density_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="self_service">
+				<label>SelfService</label>
+				<select name="self_service_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="self_service_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+			<div class="crit" data-key="calmness">
+				<label>Calmness</label>
+				<select name="calmness_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+				<textarea name="calmness_comment" rows="2" placeholder="Комментарий"></textarea>
+			</div>
+		</div>
+		<div class="detail-footer">
+			<span class="detail-status" id="detail-status"></span>
+			<div class="detail-actions">
+				<button type="button" class="button attention-tertia ghost" id="detail-cancel">Отмена</button>
+				<button type="submit" class="button attention-prima" id="detail-submit">Отправить</button>
+			</div>
+		</div>
+	</form>
+</div>
 
 	<!-- Оверлей и модальное окно авторизации -->
 	<div id="auth-overlay" class="overlay" aria-hidden="true"></div>
