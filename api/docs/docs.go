@@ -78,42 +78,19 @@ const docTemplate = `{
         },
         "/organization": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get organization for current authenticated owner (admin/owner). 1:1 per owner.",
+                "description": "Публичный доступ: возвращает организацию текущего владельца (если авторизован) или 404 если нет. (Упростили доступ — без ограничения ролей)",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "organization"
                 ],
-                "summary": "Get organization (owner self)",
+                "summary": "Get organization of authenticated owner OR (public) first organization of that owner",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/model.Organization"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
                         }
                     },
                     "404": {
@@ -133,7 +110,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create organization for current user (1:1). Roles: owner, admin",
+                "description": "Create organization for current user. Ограничение 1:1 действует ТОЛЬКО для role=owner. Админы (role=admin) могут создавать неограниченно.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1476,35 +1453,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.OrganizationParamsAverageWithOrgResponse": {
-            "type": "object",
-            "properties": {
-                "address": {
-                    "type": "string"
-                },
-                "average": {
-                    "type": "number"
-                },
-                "latitude": {
-                    "type": "number"
-                },
-                "longitude": {
-                    "type": "number"
-                },
-                "organization_id": {
-                    "type": "integer"
-                },
-                "organization_type": {
-                    "type": "string"
-                },
-                "params": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "handler.OrganizationParamsWithOrgRequest": {
             "type": "object",
             "required": [
@@ -1692,7 +1640,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "owner_id": {
-                    "description": "один владелец - одна организация",
+                    "description": "ВНИМАНИЕ: для обычного владельца (role=owner) разрешаем только одну организацию логикой приложения; admin может иметь несколько",
                     "type": "integer"
                 },
                 "params": {

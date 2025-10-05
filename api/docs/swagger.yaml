@@ -184,25 +184,6 @@ definitions:
           type: string
         type: array
     type: object
-  handler.OrganizationParamsAverageWithOrgResponse:
-    properties:
-      address:
-        type: string
-      average:
-        type: number
-      latitude:
-        type: number
-      longitude:
-        type: number
-      organization_id:
-        type: integer
-      organization_type:
-        type: string
-      params:
-        items:
-          type: string
-        type: array
-    type: object
   handler.OrganizationParamsWithOrgRequest:
     properties:
       organization_id:
@@ -329,7 +310,8 @@ definitions:
       organization_type:
         type: string
       owner_id:
-        description: один владелец - одна организация
+        description: 'ВНИМАНИЕ: для обычного владельца (role=owner) разрешаем только
+          одну организацию логикой приложения; admin может иметь несколько'
         type: integer
       params:
         $ref: '#/definitions/model.OrganizationParams'
@@ -561,8 +543,8 @@ paths:
       - auth
   /organization:
     get:
-      description: Get organization for current authenticated owner (admin/owner).
-        1:1 per owner.
+      description: 'Публичный доступ: возвращает организацию текущего владельца (если
+        авторизован) или 404 если нет. (Упростили доступ — без ограничения ролей)'
       produces:
       - application/json
       responses:
@@ -570,27 +552,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/model.Organization'
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
         "404":
           description: Not Found
           schema:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
-      summary: Get organization (owner self)
+      summary: Get organization of authenticated owner OR (public) first organization
+        of that owner
       tags:
       - organization
     patch:
@@ -649,7 +618,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: 'Create organization for current user (1:1). Roles: owner, admin'
+      description: Create organization for current user. Ограничение 1:1 действует
+        ТОЛЬКО для role=owner. Админы (role=admin) могут создавать неограниченно.
       parameters:
       - description: Organization data
         in: body

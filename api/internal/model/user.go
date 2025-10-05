@@ -11,7 +11,7 @@ type User struct {
 // Organization represents a business entity owned by a user (1:1)
 type Organization struct {
 	ID               uint                `json:"id" gorm:"primaryKey"`
-	OwnerID          uint                `json:"owner_id" gorm:"uniqueIndex"` // один владелец - одна организация
+	OwnerID          uint                `json:"owner_id"` // ВНИМАНИЕ: для обычного владельца (role=owner) разрешаем только одну организацию логикой приложения; admin может иметь несколько
 	Owner            User                `json:"-" gorm:"constraint:OnDelete:CASCADE"`
 	Address          string              `json:"address"`
 	Longitude        *float64            `json:"longitude"` // optional
