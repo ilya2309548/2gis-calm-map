@@ -89,13 +89,14 @@
 					return;
 				}
 				try {
+					const DEFAULT_CENTER = [37.625193, 55.695237]; // [lon, lat] Москва (заказанные координаты)
 					const map = new mapgl.Map('map', {
 						key: window.MAPGL_KEY,
-						center: [55.31878, 25.23584],
+						center: DEFAULT_CENTER,
 						zoom: 13,
 					});
 					window.APP.map = map;
-					new mapgl.Marker(map, { coordinates: [55.31878, 25.23584] });
+					new mapgl.Marker(map, { coordinates: DEFAULT_CENTER });
 					map.on('click', async (e) => {
 						const [lon, lat] = e.lngLat;
 						placeSelectionMarker(lon, lat);
