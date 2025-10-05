@@ -292,6 +292,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/organization/comment": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создаёт комментарий. user_id берётся из токена автоматически. Каждый не-nil и \u003e0 value обновляет агрегаты (sum,count,avg).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-comments"
+                ],
+                "summary": "Create comment for organization with optional parameter ratings",
+                "parameters": [
+                    {
+                        "description": "Create comment",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationCommentCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationCommentCreateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/organization/params/average": {
             "post": {
                 "security": [
@@ -423,6 +498,70 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/organization/{organization_id}/comments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список комментариев организации с автором и средней оценкой.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-comments"
+                ],
+                "summary": "List comments for organization",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Organization ID",
+                        "name": "organization_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationCommentListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -777,6 +916,131 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.OrganizationCommentCreateRequest": {
+            "type": "object",
+            "required": [
+                "organization_id"
+            ],
+            "properties": {
+                "appearance_comment": {
+                    "type": "string"
+                },
+                "appearance_value": {
+                    "type": "integer"
+                },
+                "calmness_comment": {
+                    "type": "string"
+                },
+                "calmness_value": {
+                    "type": "integer"
+                },
+                "intuitiveness_comment": {
+                    "type": "string"
+                },
+                "intuitiveness_value": {
+                    "type": "integer"
+                },
+                "lighting_comment": {
+                    "type": "string"
+                },
+                "lighting_value": {
+                    "type": "integer"
+                },
+                "organization_id": {
+                    "type": "integer"
+                },
+                "people_density_comment": {
+                    "type": "string"
+                },
+                "people_density_value": {
+                    "type": "integer"
+                },
+                "self_service_comment": {
+                    "type": "string"
+                },
+                "self_service_value": {
+                    "type": "integer"
+                },
+                "signage_comment": {
+                    "type": "string"
+                },
+                "signage_value": {
+                    "type": "integer"
+                },
+                "smell_comment": {
+                    "type": "string"
+                },
+                "smell_value": {
+                    "type": "integer"
+                },
+                "staff_attitude_comment": {
+                    "type": "string"
+                },
+                "staff_attitude_value": {
+                    "type": "integer"
+                },
+                "tactility_comment": {
+                    "type": "string"
+                },
+                "tactility_value": {
+                    "type": "integer"
+                },
+                "temperature_comment": {
+                    "type": "string"
+                },
+                "temperature_value": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.OrganizationCommentCreateResponse": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "$ref": "#/definitions/model.OrganizationComment"
+                },
+                "updated_aggregates": {
+                    "$ref": "#/definitions/model.OrganizationParams"
+                }
+            }
+        },
+        "handler.OrganizationCommentListItem": {
+            "type": "object",
+            "properties": {
+                "avg_val": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "user_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.OrganizationCommentListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handler.OrganizationCommentListItem"
+                    }
+                },
+                "organization_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "handler.OrganizationCreateRequest": {
             "type": "object",
             "required": [
@@ -963,6 +1227,95 @@ const docTemplate = `{
                 },
                 "params": {
                     "$ref": "#/definitions/model.OrganizationParams"
+                }
+            }
+        },
+        "model.OrganizationComment": {
+            "type": "object",
+            "properties": {
+                "appearance_comment": {
+                    "type": "string"
+                },
+                "appearance_value": {
+                    "type": "integer"
+                },
+                "avg_val": {
+                    "description": "средняя по непустым параметрам (вычисляется при создании)",
+                    "type": "number"
+                },
+                "calmness_comment": {
+                    "type": "string"
+                },
+                "calmness_value": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "intuitiveness_comment": {
+                    "type": "string"
+                },
+                "intuitiveness_value": {
+                    "type": "integer"
+                },
+                "lighting_comment": {
+                    "type": "string"
+                },
+                "lighting_value": {
+                    "type": "integer"
+                },
+                "organization_id": {
+                    "type": "integer"
+                },
+                "people_density_comment": {
+                    "type": "string"
+                },
+                "people_density_value": {
+                    "type": "integer"
+                },
+                "self_service_comment": {
+                    "type": "string"
+                },
+                "self_service_value": {
+                    "type": "integer"
+                },
+                "signage_comment": {
+                    "type": "string"
+                },
+                "signage_value": {
+                    "type": "integer"
+                },
+                "smell_comment": {
+                    "type": "string"
+                },
+                "smell_value": {
+                    "type": "integer"
+                },
+                "staff_attitude_comment": {
+                    "type": "string"
+                },
+                "staff_attitude_value": {
+                    "type": "integer"
+                },
+                "tactility_comment": {
+                    "type": "string"
+                },
+                "tactility_value": {
+                    "type": "integer"
+                },
+                "temperature_comment": {
+                    "type": "string"
+                },
+                "temperature_value": {
+                    "type": "integer"
+                },
+                "text": {
+                    "description": "общий текст комментария (опционально)",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "author of the comment",
+                    "type": "integer"
                 }
             }
         },

@@ -40,6 +40,88 @@ definitions:
       token:
         type: string
     type: object
+  handler.OrganizationCommentCreateRequest:
+    properties:
+      appearance_comment:
+        type: string
+      appearance_value:
+        type: integer
+      calmness_comment:
+        type: string
+      calmness_value:
+        type: integer
+      intuitiveness_comment:
+        type: string
+      intuitiveness_value:
+        type: integer
+      lighting_comment:
+        type: string
+      lighting_value:
+        type: integer
+      organization_id:
+        type: integer
+      people_density_comment:
+        type: string
+      people_density_value:
+        type: integer
+      self_service_comment:
+        type: string
+      self_service_value:
+        type: integer
+      signage_comment:
+        type: string
+      signage_value:
+        type: integer
+      smell_comment:
+        type: string
+      smell_value:
+        type: integer
+      staff_attitude_comment:
+        type: string
+      staff_attitude_value:
+        type: integer
+      tactility_comment:
+        type: string
+      tactility_value:
+        type: integer
+      temperature_comment:
+        type: string
+      temperature_value:
+        type: integer
+      text:
+        type: string
+    required:
+    - organization_id
+    type: object
+  handler.OrganizationCommentCreateResponse:
+    properties:
+      comment:
+        $ref: '#/definitions/model.OrganizationComment'
+      updated_aggregates:
+        $ref: '#/definitions/model.OrganizationParams'
+    type: object
+  handler.OrganizationCommentListItem:
+    properties:
+      avg_val:
+        type: number
+      id:
+        type: integer
+      text:
+        type: string
+      user_id:
+        type: integer
+      user_name:
+        type: string
+    type: object
+  handler.OrganizationCommentListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/handler.OrganizationCommentListItem'
+        type: array
+      organization_id:
+        type: integer
+    type: object
   handler.OrganizationCreateRequest:
     properties:
       address:
@@ -166,6 +248,66 @@ definitions:
         type: integer
       params:
         $ref: '#/definitions/model.OrganizationParams'
+    type: object
+  model.OrganizationComment:
+    properties:
+      appearance_comment:
+        type: string
+      appearance_value:
+        type: integer
+      avg_val:
+        description: средняя по непустым параметрам (вычисляется при создании)
+        type: number
+      calmness_comment:
+        type: string
+      calmness_value:
+        type: integer
+      id:
+        type: integer
+      intuitiveness_comment:
+        type: string
+      intuitiveness_value:
+        type: integer
+      lighting_comment:
+        type: string
+      lighting_value:
+        type: integer
+      organization_id:
+        type: integer
+      people_density_comment:
+        type: string
+      people_density_value:
+        type: integer
+      self_service_comment:
+        type: string
+      self_service_value:
+        type: integer
+      signage_comment:
+        type: string
+      signage_value:
+        type: integer
+      smell_comment:
+        type: string
+      smell_value:
+        type: integer
+      staff_attitude_comment:
+        type: string
+      staff_attitude_value:
+        type: integer
+      tactility_comment:
+        type: string
+      tactility_value:
+        type: integer
+      temperature_comment:
+        type: string
+      temperature_value:
+        type: integer
+      text:
+        description: общий текст комментария (опционально)
+        type: string
+      user_id:
+        description: author of the comment
+        type: integer
     type: object
   model.OrganizationParams:
     properties:
@@ -469,6 +611,97 @@ paths:
       summary: Create organization
       tags:
       - organization
+  /organization/{organization_id}/comments:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список комментариев организации с автором и средней
+        оценкой.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.OrganizationCommentListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List comments for organization
+      tags:
+      - organization-comments
+  /organization/comment:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт комментарий. user_id берётся из токена автоматически. Каждый
+        не-nil и >0 value обновляет агрегаты (sum,count,avg).
+      parameters:
+      - description: Create comment
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.OrganizationCommentCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handler.OrganizationCommentCreateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create comment for organization with optional parameter ratings
+      tags:
+      - organization-comments
   /organization/params/average:
     post:
       consumes:

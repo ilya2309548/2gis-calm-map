@@ -16,3 +16,7 @@ func CreateEmptyOrganizationParams(orgID uint) (model.OrganizationParams, error)
 	err := db.DB.Create(&p).Error
 	return p, err
 }
+
+func UpdateOrganizationParams(p *model.OrganizationParams) error {
+	return db.DB.Save(p).Error
+}

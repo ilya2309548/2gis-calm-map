@@ -31,3 +31,9 @@ func GetOrganizationsByType(orgType string) ([]model.Organization, error) {
 	err := db.DB.Preload("Params").Where("organization_type = ?", orgType).Find(&orgs).Error
 	return orgs, err
 }
+
+func GetOrganizationByID(id uint) (model.Organization, error) {
+	var org model.Organization
+	err := db.DB.Preload("Params").First(&org, id).Error
+	return org, err
+}

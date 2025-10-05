@@ -70,3 +70,39 @@ type OrganizationParams struct {
 	CalmnessCount uint    `json:"calmness_count"`
 	CalmnessSum   uint    `json:"calmness_sum"`
 }
+
+// OrganizationComment represents a single user comment with optional ratings per parameter.
+// Each numeric field (Value) is optional (nil => not provided). For every non-nil value we also can store an optional text comment.
+type OrganizationComment struct {
+	ID             uint         `json:"id" gorm:"primaryKey"`
+	OrganizationID uint         `json:"organization_id" index:"idx_org_comment"`
+	Organization   Organization `json:"-" gorm:"constraint:OnDelete:CASCADE"`
+	UserID         uint         `json:"user_id"` // author of the comment
+	User           User         `json:"-" gorm:"constraint:OnDelete:CASCADE"`
+
+	Text     *string  `json:"text"`    // общий текст комментария (опционально)
+	AvgValue *float64 `json:"avg_val"` // средняя по непустым параметрам (вычисляется при создании)
+
+	AppearanceValue      *uint   `json:"appearance_value"`
+	AppearanceComment    *string `json:"appearance_comment"`
+	LightingValue        *uint   `json:"lighting_value"`
+	LightingComment      *string `json:"lighting_comment"`
+	SmellValue           *uint   `json:"smell_value"`
+	SmellComment         *string `json:"smell_comment"`
+	TemperatureValue     *uint   `json:"temperature_value"`
+	TemperatureComment   *string `json:"temperature_comment"`
+	TactilityValue       *uint   `json:"tactility_value"`
+	TactilityComment     *string `json:"tactility_comment"`
+	SignageValue         *uint   `json:"signage_value"`
+	SignageComment       *string `json:"signage_comment"`
+	IntuitivenessValue   *uint   `json:"intuitiveness_value"`
+	IntuitivenessComment *string `json:"intuitiveness_comment"`
+	StaffAttitudeValue   *uint   `json:"staff_attitude_value"`
+	StaffAttitudeComment *string `json:"staff_attitude_comment"`
+	PeopleDensityValue   *uint   `json:"people_density_value"`
+	PeopleDensityComment *string `json:"people_density_comment"`
+	SelfServiceValue     *uint   `json:"self_service_value"`
+	SelfServiceComment   *string `json:"self_service_comment"`
+	CalmnessValue        *uint   `json:"calmness_value"`
+	CalmnessComment      *string `json:"calmness_comment"`
+}

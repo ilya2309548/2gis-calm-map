@@ -24,3 +24,7 @@ func (s *OrganizationService) UpdateByOwner(ownerID uint, updates map[string]int
 func (s *OrganizationService) GetByType(orgType string) ([]model.Organization, error) {
 	return repository.GetOrganizationsByType(orgType)
 }
+
+func (s *OrganizationService) GetByID(id uint) (model.Organization, error) {
+	return repository.GetOrganizationByID(id)
+}
