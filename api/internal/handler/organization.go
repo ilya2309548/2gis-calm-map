@@ -42,7 +42,7 @@ func roleAllowed(c *gin.Context) (uint, bool) {
 
 // CreateOrganization godoc
 // @Summary Create organization
-// @Description Create organization for current user (1:1). Roles: owner, admin
+// @Description Create organization for current user. Ограничение 1:1 действует ТОЛЬКО для role=owner. Админы (role=admin) могут создавать неограниченно.
 // @Tags organization
 // @Accept json
 // @Produce json
@@ -62,20 +62,32 @@ func CreateOrganization(c *gin.Context) {
 		return
 	}
 
+	roleVal, _ := c.Get("role")
+	roleStr, _ := roleVal.(string)
+
 	var req OrganizationCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Если пользователь НЕ админ, проверяем что у него ещё нет организации
+	if roleStr != "admin" {
+		if _, err := organizationService.GetByOwner(ownerID); err == nil { // нашлась
+			c.JSON(http.StatusConflict, gin.H{"error": "organization already exists for this owner"})
+			return
+		}
+	}
+
 	org := model.Organization{
 		OwnerID:          ownerID,
 		Address:          req.Address,
-		Longitude:        req.Longitude, // Optional, may be nil
-		Latitude:         req.Latitude,  // Optional, may be nil
+		Longitude:        req.Longitude,
+		Latitude:         req.Latitude,
 		OrganizationType: req.OrganizationType,
 	}
 	if err := organizationService.Create(&org); err != nil {
+		// теперь не должно быть unique ошибки, но на всякий случай обрабатываем
 		if strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(strings.ToLower(err.Error()), "duplicate") {
 			c.JSON(http.StatusConflict, gin.H{"error": "organization already exists"})
 			return

@@ -5,6 +5,452 @@
 		<title>StimulMap</title>
 		<link rel="stylesheet" href="main.css">
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<!-- Favicon (inline SVG data URI) -->
+		<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23537E70'/%3E%3Ctext x='32' y='40' font-size='32' text-anchor='middle' fill='white' font-family='Arial'%3ES%3C/text%3E%3C/svg%3E">
+		<!-- 2GIS MapGL JS API: async loading with callback -->
+		<script>
+			// Временный плейсхолдер. Поставь сюда свой ключ или вынеси его в отдельный файл, не коммить секреты в репозиторий.
+			window.MAPGL_KEY = '285d3b2b-96ab-4fe5-a700-12ef370d7085';
+			// Настройка: авто-открывать диалог создания организации после выбора точки
+			window.AUTO_OPEN_ORG_DIALOG = true; // выстави false если хочешь только кнопку
+			// Храним ссылку на карту и выбранный маркер
+			window.APP = { map: null, selectedMarker: null };
+			const GEOCODER_BASE = 'https://catalog.api.2gis.com/3.0/items/geocode';
+			async function reverseGeocode(lat, lon) {
+				const key = window.MAPGL_KEY;
+				if (!key) return { error: 'Нет ключа' };
+				const url = `${GEOCODER_BASE}?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&fields=items.point&key=${encodeURIComponent(key)}`;
+				try {
+					const res = await fetch(url);
+					const json = await res.json();
+					if (!res.ok) return { error: json?.meta?.code || 'Ошибка геокодера' };
+					const items = (json?.result?.items || []).filter(Boolean);
+					if (!items.length) return { error: 'Не найдено' };
+					return { items };
+				} catch (e) {
+					return { error: e.message };
+				}
+			}
+			function setAddressLoading() {
+				const pill = document.getElementById('selected-address');
+				if (pill){
+					pill.classList.add('loading');
+					pill.textContent = 'Определение адреса...';
+				}
+			}
+			function setAddress(text, error=false) {
+				const pill = document.getElementById('selected-address');
+				if (!pill) return;
+				pill.classList.remove('loading');
+				pill.textContent = text;
+				pill.dataset.error = error ? '1':'0';
+				pill.classList.toggle('error', !!error);
+				const createBtn = document.getElementById('open-org-dialog');
+				if (createBtn) {
+					createBtn.disabled = !!error || !text || text.startsWith('Выберите');
+				}
+			}
+			function buildBestCandidate(items){
+				// Удаляем дубликаты по id
+				const seen = new Set();
+				const unique = [];
+				for (const it of items){
+					if (!it.id || seen.has(it.id)) continue;
+					seen.add(it.id); unique.push(it);
+				}
+				// Сортируем: building > place > adm_div; наличие address_name / building_name предпочтительнее
+				const weightType = (t)=> t==='building'?3 : (t==='place'?2 : (t==='adm_div'?1:0));
+				unique.sort((a,b)=>{
+					const wa = weightType(a.type); const wb = weightType(b.type);
+					if (wb!==wa) return wb-wa;
+					const aa = (a.address_name?1:0)+(a.building_name?1:0);
+					const ab = (b.address_name?1:0)+(b.building_name?1:0);
+					if (ab!==aa) return ab-aa;
+					return 0;
+				});
+				return unique;
+			}
+			function formatAddress(raw){
+				return (raw||'').replace(/\s+/g,' ').trim();
+			}
+			function placeSelectionMarker(lon, lat) {
+				if (!window.APP.map) return;
+				if (window.APP.selectedMarker) {
+					window.APP.selectedMarker.destroy();
+				}
+				window.APP.selectedMarker = new mapgl.Marker(window.APP.map, {
+					coordinates: [lon, lat],
+					icon: undefined,
+				});
+			}
+			// ====== Работа с организациями по адресу ======
+			const ORG_API = 'http://81.29.146.35:8080';
+			const ALL_PARAMS = ['appearance','lighting','smell','temperature','tactility','signage','intuitiveness','staff_attitude','people_density','self_service','calmness'];
+			function getToken(){ try { return localStorage.getItem('auth_token'); } catch { return null; } }
+			function decodeJWT(token){
+				try { const p = token.split('.')[1]; return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))); } catch { return null; }
+			}
+			async function fetchJSON(url, opts){
+				try {
+					const res = await fetch(url, opts);
+					let data = null; try { data = await res.json(); } catch { data = {}; }
+					return { ok: res.ok, status: res.status, data };
+				} catch(e){
+					return { ok:false, status:0, data:{ error:'Network error', detail: e.message } };
+				}
+			}
+			function diagnoseNetworkError(errObj, endpoint){
+				if(!errObj || errObj.status !== 0) return '';
+				let hints = [];
+				hints.push('Не удалось установить соединение с '+endpoint);
+				if(!navigator.onLine) hints.push('Похоже, нет сети (navigator.offLine)');
+				if(location.protocol === 'file:') hints.push('Страница открыта как file:// — браузер может блокировать CORS');
+				if(location.hostname === 'localhost' || location.hostname === '127.0.0.1') hints.push('Проверь, запущен ли backend на :8080 и нет ли firewall');
+				hints.push('Проверь консоль Network в DevTools (запрос мог быть отклонен CORS)');
+				return hints.join('\n');
+			}
+			async function getUserParamNames(){
+				const token = getToken(); if(!token) return ALL_PARAMS; // не авторизован — все
+				const dec = decodeJWT(token); if(!dec || !dec.user_id) return ALL_PARAMS;
+				try {
+					const { ok, data } = await fetchJSON(`${ORG_API}/user-params/${dec.user_id}`, { headers:{ Authorization:'Bearer '+token }});
+					if (!ok) return ALL_PARAMS;
+					const selected = ALL_PARAMS.filter(k => data[k] === true);
+					return selected.length ? selected : ALL_PARAMS; // если ничего не отмечено — все
+				} catch { return ALL_PARAMS; }
+			}
+			function renderExistingOrg(orgInfo, avgInfo){
+				openOrgInfoDialog(orgInfo, avgInfo);
+			}
+			function hideExistingOrg(){ /* modal approach, no inline cleanup needed */ }
+			// ЯВНЫЙ ШАГ: получение организации по адресу (для получения её ID)
+			async function fetchOrganizationByAddress(address){
+				const normalized = (address||'').trim();
+				if (!normalized) return { ok:false, status:400, data:{ error:'empty address'} };
+				return await fetchJSON(`${ORG_API}/organization/public/by-address`, {
+					method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ address: normalized })
+				});
+			}
+			function buildOrgInfoHTML(org, avg){
+				// Сервер возвращает поля: id, address, organization_type, map_path, picture_path
+				const p = (avg?.Params||[]).map(x=>`<code>${x}</code>`).join(' ');
+				const average = avg?.Average != null ? Number(avg.Average).toFixed(2) : '—';
+				const mapImg = org.map_path ? `<div class="img-box"><img src="${ORG_API}/organization/${org.id}/image/map" alt="Карта" loading="lazy"></div>` : '';
+				const picImg = org.picture_path ? `<div class="img-box"><img src="${ORG_API}/organization/${org.id}/image/picture" alt="Фото" loading="lazy"></div>` : '';
+				return `
+					<div class="org-info-top">
+						<div class="org-info-line"><span class="lbl">Адрес:</span> <span class="val addr">${org.address||'-'}</span> <span class="dot">•</span> <span class="lbl">Тип:</span> <span class="val type">${org.organization_type||'-'}</span></div>
+						<div class="org-info-id">ID: <span class="val">${org.id}</span></div>
+					</div>
+					<div class="org-info-images">${mapImg}${picImg}</div>
+					<div class="org-info-average">Среднее: <span class="val">${average}</span></div>
+					<div class="org-comments-wrapper">
+						<h3 class="org-comments-title">Отзывы</h3>
+						<div id="org-comments" class="org-comments" data-org-id="${org.id}">
+							<p class="org-comments-loading">Загрузка отзывов...</p>
+						</div>
+					</div>
+				`;
+			}
+			function openOrgInfoDialog(org, avg){
+				const dialog = document.getElementById('org-info-dialog');
+				const overlay = document.getElementById('org-info-overlay');
+				const body = document.getElementById('org-info-body');
+				if (!dialog || !overlay || !body) return;
+				body.innerHTML = buildOrgInfoHTML(org, avg);
+				dialog.classList.add('open');
+				dialog.removeAttribute('aria-hidden');
+				overlay.classList.add('visible');
+				overlay.removeAttribute('aria-hidden');
+				// После открытия — загрузить отзывы
+				loadOrganizationComments(org.id);
+				prepareQuickComment(org.id);
+			}
+			function closeOrgInfoDialog(){
+				const dialog = document.getElementById('org-info-dialog');
+				const overlay = document.getElementById('org-info-overlay');
+				if (!dialog || !overlay) return;
+				dialog.classList.remove('open');
+				dialog.setAttribute('aria-hidden','true');
+				overlay.classList.remove('visible');
+				overlay.setAttribute('aria-hidden','true');
+			}
+						// ====== Комментарии организации ======
+						async function loadOrganizationComments(orgId){
+							const wrap = document.getElementById('org-comments');
+							if(!wrap) return;
+							wrap.innerHTML = '<p class="org-comments-loading">Загрузка отзывов...</p>';
+							const token = getToken();
+							if(!token){
+								wrap.innerHTML = '<p class="org-comments-empty">Чтобы увидеть отзывы, войдите.</p>';
+								return;
+							}
+							try {
+								const res = await fetch(`${ORG_API}/organization/${orgId}/comments`, { headers:{ Authorization:'Bearer '+token }});
+								if(!res.ok){
+									wrap.innerHTML = '<p class="org-comments-error">Не удалось загрузить отзывы</p>';
+									return;
+								}
+								const data = await res.json();
+								const items = Array.isArray(data.items)? data.items: [];
+								if(!items.length){
+									wrap.innerHTML = '<p class="org-comments-empty">Пока нет отзывов</p>';
+									return;
+								}
+								wrap.innerHTML = items.map(renderCommentItem).join('');
+							} catch(e){
+								wrap.innerHTML = '<p class="org-comments-error">Ошибка загрузки</p>';
+							}
+						}
+						function renderCommentItem(item){
+							const hasVal = typeof item.avg_val === 'number' && item.avg_val > 0;
+							const val = hasVal ? `<span class="cmt-val" title="Средняя оценка">${Number(item.avg_val).toFixed(1)}</span>` : '';
+							const user = (item.user_name||'—').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+							const text = (item.text||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+							return `<div class="comment-item">${val}<div class="cmt-main"><div class="cmt-user">${user}</div><div class="cmt-text">${text||'<em class=\"muted\">(без текста)</em>'}</div></div></div>`;
+						}
+						// ===== Быстрый комментарий =====
+						function prepareQuickComment(orgId){
+							const input = document.getElementById('quick-comment-text');
+							const sendBtn = document.getElementById('quick-comment-send');
+							const status = document.getElementById('quick-comment-status');
+							const detBtn = document.getElementById('open-detailed-comment');
+							if(!input || !sendBtn){ return; }
+							input.value=''; status.textContent=''; sendBtn.disabled = true;
+							input.oninput = ()=>{ sendBtn.disabled = !input.value.trim(); };
+							sendBtn.onclick = async ()=>{
+								const text = input.value.trim();
+								if(!text) return;
+								const token = getToken();
+								if(!token){ status.textContent='Войдите чтобы отправить'; status.className='oqc-status error'; return; }
+								sendBtn.disabled = true; status.textContent='Отправка...'; status.className='oqc-status saving';
+								try {
+									const payload = { organization_id: orgId, text };
+									let res;
+									try { res = await fetch(`${ORG_API}/organization/comment`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body: JSON.stringify(payload) }); }
+									catch(netErr){
+										console.error('Quick comment network error', netErr);
+										status.textContent='Сеть: не удалось отправить'; status.className='oqc-status error';
+										const diag = diagnoseNetworkError({ status:0 }, '/organization/comment');
+										if(diag) console.warn(diag);
+										sendBtn.disabled=false; return;
+									}
+									if(!res.ok){ const js = await res.json().catch(()=>({})); status.textContent = js.error||`Ошибка ${res.status}`; status.className='oqc-status error'; sendBtn.disabled=false; return; }
+									status.textContent='Отправлено'; status.className='oqc-status ok'; input.value='';
+									// перезагрузить комментарии
+									loadOrganizationComments(orgId);
+								} catch(e){ status.textContent='Ошибка'; status.className='oqc-status error'; console.error('Quick comment unexpected', e); sendBtn.disabled=false; }
+							};
+							if(detBtn){ detBtn.onclick = ()=> openDetailedDialog(orgId); }
+						}
+						// ===== Детальная форма =====
+						let lastFocusBeforeDetail = null;
+						function openDetailedDialog(orgId){
+							const dlg = document.getElementById('detail-dialog');
+							const ov = document.getElementById('detail-overlay');
+							if(!dlg||!ov) return;
+							lastFocusBeforeDetail = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+							document.getElementById('detail-org-id').value = orgId;
+							dlg.classList.add('open'); dlg.removeAttribute('aria-hidden');
+							ov.classList.add('visible'); ov.removeAttribute('aria-hidden');
+							// Фокус ставим на textarea общего отзыва для доступности
+							const focusTarget = document.getElementById('detail-text');
+							if(focusTarget) setTimeout(()=>focusTarget.focus(), 30);
+						}
+						function closeDetailedDialog(){
+							const dlg = document.getElementById('detail-dialog');
+							const ov = document.getElementById('detail-overlay');
+							if(!dlg||!ov) return;
+							// Если фокус внутри диалога — убираем перед aria-hidden
+							const active = document.activeElement;
+							if(active && dlg.contains(active)) { try { active.blur(); } catch{} }
+							dlg.classList.remove('open');
+							// Отложенно проставляем aria-hidden после потери фокуса
+							setTimeout(()=>{ dlg.setAttribute('aria-hidden','true'); }, 0);
+							ov.classList.remove('visible'); ov.setAttribute('aria-hidden','true');
+							// Восстановление фокуса
+							if(lastFocusBeforeDetail && document.contains(lastFocusBeforeDetail)) {
+								try { lastFocusBeforeDetail.focus(); } catch{}
+							} else {
+								const fallback = document.getElementById('open-detailed-comment') || document.getElementById('auth-btn');
+								if(fallback) try { fallback.focus(); } catch{}
+							}
+						}
+						document.addEventListener('click',(e)=>{
+							if(e.target && (e.target.id==='detail-close' || e.target.id==='detail-cancel' || e.target.id==='detail-overlay')) closeDetailedDialog();
+						});
+						document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ closeDetailedDialog(); }});
+						document.addEventListener('submit', async (e)=>{
+							if(e.target && e.target.id==='detail-form'){
+								e.preventDefault();
+								const form = e.target;
+								const statusEl = document.getElementById('detail-status');
+								const token = getToken();
+								if(!token){ statusEl.textContent='Нужно войти'; statusEl.className='detail-status error'; return; }
+								statusEl.textContent='Отправка...'; statusEl.className='detail-status saving';
+								const fd = new FormData(form);
+								const payload = { organization_id: Number(fd.get('organization_id')) };
+								const text = (fd.get('text')||'').toString().trim(); if(text) payload.text=text;
+								const keys = ['appearance','lighting','smell','temperature','tactility','signage','intuitiveness','staff_attitude','people_density','self_service','calmness'];
+								for(const k of keys){
+									const v = fd.get(k+'_value');
+									if(v){ payload[k+'_value'] = Number(v); }
+								}
+								console.debug('Submitting detailed comment payload', payload);
+								if(!payload.text && Object.keys(payload).length === 1){
+									statusEl.textContent='Добавьте текст или хоть одну оценку';
+									statusEl.className='detail-status error';
+									return;
+								}
+								try {
+									let res;
+									try { res = await fetch(`${ORG_API}/organization/comment`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body: JSON.stringify(payload) }); }
+									catch(netErr){
+										console.error('Detailed comment network error', netErr);
+										statusEl.textContent='Сеть: не удалось подключиться'; statusEl.className='detail-status error';
+										const diag = diagnoseNetworkError({ status:0 }, '/organization/comment');
+										if(diag) console.warn(diag);
+										return;
+									}
+									if(!res.ok){ const js = await res.json().catch(()=>({})); statusEl.textContent = js.error||`Ошибка ${res.status}`; statusEl.className='detail-status error'; return; }
+									statusEl.textContent='Готово'; statusEl.className='detail-status ok';
+									loadOrganizationComments(payload.organization_id);
+									setTimeout(()=>{ closeDetailedDialog(); }, 600);
+								} catch(err){ statusEl.textContent='Ошибка: '+err.message; statusEl.className='detail-status error'; console.error('Detailed comment unexpected', err); }
+							}
+						});
+						// Инициализация смайликов для детальной формы
+						const EMOJI_MAP = [
+							{val:1, img:'img/icons/emoji-sad.png', alt:'1'},
+							{val:2, img:'img/icons/emoji-think-left.png', alt:'2'},
+							{val:3, img:'img/icons/emoji-quite.png', alt:'3'},
+							{val:4, img:'img/icons/emoji-think-right.png', alt:'4'},
+							{val:5, img:'img/icons/emoji.png', alt:'5'}
+						];
+						function updateDetailSubmitState(){
+							const form = document.getElementById('detail-form'); if(!form) return;
+							const submitBtn = document.getElementById('detail-submit'); if(!submitBtn) return;
+							const textVal = (document.getElementById('detail-text')?.value||'').trim();
+							const keys = ['appearance','lighting','smell','temperature','tactility','signage','intuitiveness','staff_attitude','people_density','self_service','calmness'];
+							let any=false;
+							for(const k of keys){ const hv=form.querySelector(`input[name='${k}_value']`); if(hv && hv.value){ any=true; break; } }
+							submitBtn.disabled = !(any || textVal);
+						}
+						function initDetailEmojis(){
+							const containers = document.querySelectorAll('.crit-emojis');
+							containers.forEach(c=>{
+								// Если уже заполнено (повторное открытие) — пропускаем
+								if(c.children && c.children.length) return;
+								const param = c.dataset.param;
+								c.innerHTML = EMOJI_MAP.map(e=>`<button type="button" class="emoji-rate" data-param="${param}" data-value="${e.val}" title="${e.alt}"><img src="${e.img}" alt="${e.alt}"/></button>`).join('');
+							});
+							updateDetailSubmitState();
+						}
+						document.addEventListener('click',(e)=>{
+							const btn = e.target.closest && e.target.closest('.emoji-rate');
+							if(!btn) return;
+							const param = btn.dataset.param; const val = btn.dataset.value;
+							const group = document.querySelectorAll(`.emoji-rate[data-param='${param}']`);
+							const hidden = document.querySelector(`input[name='${param}_value']`);
+							const alreadySelected = btn.classList.contains('selected');
+							group.forEach(b=> b.classList.remove('selected'));
+							if(alreadySelected){
+								if(hidden) hidden.value='';
+							}else{
+								btn.classList.add('selected');
+								if(hidden) hidden.value = val;
+							}
+							updateDetailSubmitState();
+						});
+						// Инициализируем смайлики только после полной загрузки DOM или при первом открытии окна
+						if(document.readyState === 'complete' || document.readyState === 'interactive'){
+							/* пусто: теперь вызов при открытии */
+						}else{
+							document.addEventListener('DOMContentLoaded', ()=>{/* ленивый */});
+						}
+						// Переопределяем openDetailedDialog чтобы вставлять смайлы при открытии
+						const _origOpenDetailedDialog = openDetailedDialog;
+						openDetailedDialog = function(orgId){
+							_origOpenDetailedDialog(orgId);
+							initDetailEmojis();
+							updateDetailSubmitState();
+						};
+			document.addEventListener('click', (e)=>{
+				if (e.target && (e.target.id === 'org-info-close' || e.target.id === 'org-info-ok' || e.target.id === 'org-info-overlay')) closeOrgInfoDialog();
+			});
+			document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeOrgInfoDialog(); });
+			let lastOrgLookupSeq = 0;
+			async function checkExistingOrganization(address){
+				const seq = ++lastOrgLookupSeq;
+				const createBtn = document.getElementById('open-org-dialog');
+				if (createBtn) createBtn.disabled = true;
+				try {
+					// STEP 1: получить организацию (ID) по адресу
+					const lookup = await fetchOrganizationByAddress(address);
+					if (seq !== lastOrgLookupSeq) return false; // устаревший ответ
+					if (!lookup.ok) {
+						if (lookup.status === 404) { // нет организации — можно создавать
+							if (createBtn) createBtn.disabled = false;
+							return false;
+						}
+						return false;
+					}
+					// STEP 2: получить список параметров (фильтр по пользователю)
+					const paramNames = await getUserParamNames();
+					// STEP 3: запрос среднего для найденной организации
+					const orgId = lookup.data.id; // правильное имя поля из JSON
+					if (orgId == null) { console.warn('Не удалось получить id организации из ответа', lookup.data); if (createBtn) createBtn.disabled = false; return false; }
+					const avgReq = { organization_id: orgId, params: paramNames };
+					const avg = await fetchJSON(`${ORG_API}/organization/params/average/with-info`, {
+						method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(avgReq)
+					});
+					if (avg.ok) renderExistingOrg(lookup.data, avg.data); else renderExistingOrg(lookup.data, { Average: null, Params: paramNames });
+					return true;
+				} catch(e){
+					if (createBtn) createBtn.disabled = false;
+					return false;
+				}
+			}
+			function initMap() {
+				if (!window.MAPGL_KEY || window.MAPGL_KEY.startsWith('PASTE_')) {
+					console.warn('MapGL key не задан. Установите window.MAPGL_KEY.');
+					return;
+				}
+				try {
+					const DEFAULT_CENTER = [37.625193, 55.695237]; // [lon, lat] Москва (заказанные координаты)
+					const map = new mapgl.Map('map', {
+						key: window.MAPGL_KEY,
+						center: DEFAULT_CENTER,
+						zoom: 13,
+					});
+					window.APP.map = map;
+					new mapgl.Marker(map, { coordinates: DEFAULT_CENTER });
+					map.on('click', async (e) => {
+						const [lon, lat] = e.lngLat;
+						placeSelectionMarker(lon, lat);
+						setAddressLoading();
+						const { items, error } = await reverseGeocode(lat, lon);
+						if (error) { console.warn('GEOCODER ERROR', error); setAddress(`Адрес не найден (${error})`, true); return; }
+						const best = buildBestCandidate(items);
+						if (!best.length){ setAddress('Адрес не найден', true); return; }
+						const top = best[0];
+						const addr = formatAddress(top.full_name || top.address_name || top.name || 'Неизвестный объект');
+						setAddress(addr);
+						// Проверяем существование организации
+						const exists = await checkExistingOrganization(addr);
+						// Авто-открытие создания только если не существует и включено
+						if (!exists && window.AUTO_OPEN_ORG_DIALOG && typeof window.openOrganizationDialog === 'function') {
+							setTimeout(()=>{ try { window.openOrganizationDialog(); } catch(e){ console.warn('openOrganizationDialog failed', e); } }, 50);
+						}
+					});
+				} catch (e) {
+					console.error('Ошибка инициализации карты:', e);
+				}
+			}
+		</script>
+		<script src="https://mapgl.2gis.com/api/js/v1?callback=initMap" async defer></script>
+		<script defer src="auth.js"></script>
+		<script defer src="organization.js"></script>
 		
 	  </head>
 	  
@@ -12,106 +458,545 @@
 	
 	
 <body class="index">
-	
-		  <header>
-			<a class="button attention-tertia">
-				<i class="fa fa-chevron-left" aria-hidden="true"></i>
-			</a>
-			<div>
-				<h1>Добавить отзыв</h1>
-				<a class="button medium">ул. Академическая 2</a>
-			</div>
-			
-			<a class="button attention-tertia">
-				<i class="fa fa-cog" aria-hidden="true"></i>
-			</a>
-			
+	<!-- Полноэкранная карта -->
+	<div id="map" aria-label="Карта 2GIS" role="region"></div>
+
+	<!-- Панель выбранного адреса (восстановлено) -->
+	<div class="address-panel" id="address-panel">
+		<div id="selected-address" class="address-pill" aria-live="polite">Выберите точку на карте</div>
+		<button id="open-org-dialog" class="button attention-prima small" disabled style="margin-left:8px;" aria-disabled="true">Создать организацию</button>
+	</div>
+
+	<!-- Боковая кнопка поиска -->
+	<button id="side-search-toggle" class="side-search-toggle" aria-label="Поиск" aria-haspopup="true" aria-expanded="false">🔍</button>
+
+	<!-- Боковая панель поиска -->
+	<aside id="side-search-panel" class="side-search-panel" aria-hidden="true" role="complementary" aria-label="Поиск организаций по типу и порогу">
+		<header class="ssp-header">
+			<h2 class="ssp-title">Поиск</h2>
+			<button id="side-search-close" class="icon-close small" aria-label="Закрыть панель">×</button>
 		</header>
-	<!--https://ru.stackoverflow.com/questions/69992/%D0%A2%D0%BE%D0%BB%D1%8C%D0%BA%D0%BE-%D0%B3%D0%BE%D1%80%D0%B8%D0%B7%D0%BE%D0%BD%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F-%D0%BF%D1%80%D0%BE%D0%BA%D1%80%D1%83%D1%82%D0%BA%D0%B0-div-->
-	<main>
-	<section>
-		<p>Выберите категорию</p>
-		<div class="slider-chooser">
-			<button class="button attention-tertia">
-				<i class="fa fa-angle-left" aria-hidden="true"></i>
-			</button>
-			<div class="parent">
-				<button class="button child">Внешний вид</button>
-				<button class="button child">Свет</button>
-				<button class="button child">Запах</button>
-				<button class="button child">Инструкции</button>
+		<form id="side-search-form" class="ssp-form" novalidate>
+			<div class="ssp-field">
+				<label for="ssp-type">Тип</label>
+				<input id="ssp-type" name="organization_type" list="ssp-type-list" placeholder="например: офис" autocomplete="off" />
+				<datalist id="ssp-type-list">
+					<option value="офис"></option>
+					<option value="магазин"></option>
+					<option value="кафе"></option>
+					<option value="other"></option>
+					<option value="shop"></option>
+					<option value="cafe"></option>
+					<option value="office"></option>
+				</datalist>
 			</div>
-			<button class="button attention-tertia">
-				<i class="fa fa-angle-right" aria-hidden="true"></i>
-			</button>
+			<div class="ssp-field">
+				<label for="ssp-threshold">Порог (0–5)</label>
+				<input id="ssp-threshold" name="threshold" type="number" min="0" max="5" step="0.1" placeholder="3" />
+			</div>
+			<div class="ssp-actions">
+				<button type="submit" class="button attention-prima small" id="ssp-run">Найти</button>
+				<button type="button" class="button attention-tertia small" id="ssp-clear" disabled>Очистить</button>
+			</div>
+			<div id="ssp-status" class="ssp-status" aria-live="polite"></div>
+		</form>
+		<div id="ssp-results" class="ssp-results" aria-live="polite"></div>
+	</aside>
+
+	<!-- Кнопка авторизации / профиль -->
+	<button id="auth-btn" class="auth-btn" aria-haspopup="dialog" aria-expanded="false">
+		<span class="auth-btn__label">Войти</span>
+		<i class="fa fa-user" aria-hidden="true"></i>
+	</button>
+
+    <!-- Кнопка запуска поиска -->
+    <button id="open-search" class="fab fab-text" aria-label="Поиск организаций">Поиск</button>
+
+    <!-- Диалог поиска по типу -->
+    <div id="search-overlay" class="overlay" aria-hidden="true"></div>
+    <div id="search-dialog" class="org-dialog org-dialog--search" role="dialog" aria-modal="true" aria-labelledby="search-title" aria-hidden="true">
+        <div class="org-dialog__header">
+            <h2 id="search-title">Поиск организаций</h2>
+            <button class="icon-close small" id="search-close" aria-label="Закрыть"><i class="fa fa-times" aria-hidden="true"></i></button>
+        </div>
+        <form id="search-form" novalidate>
+            <div class="field-group">
+                <label for="search-type">Тип организации</label>
+                <select id="search-type" name="organization_type" required>
+                    <option value="shop">Магазин</option>
+                    <option value="cafe">Кафе</option>
+                    <option value="office">Офис</option>
+                    <option value="other" selected>Другое</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label for="search-threshold">Порог (0–5.0)</label>
+                <input type="number" id="search-threshold" name="threshold" min="0" max="5" step="0.1" placeholder="3.0" />
+            </div>
+            <div class="field-group small-info" id="search-status" aria-live="polite"></div>
+            <div class="org-dialog__footer">
+                <button type="button" class="button attention-tertia ghost" id="search-cancel">Отмена</button>
+                <button type="submit" class="button attention-prima" id="search-submit">Найти</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Панель результатов -->
+    <div id="search-results-panel" class="search-results-panel hidden" aria-live="polite">
+        <div class="srp-header">
+            <span id="srp-count">—</span>
+            <button id="srp-clear" class="icon-clear" aria-label="Очистить результаты">×</button>
+        </div>
+        <div id="srp-list" class="srp-list"></div>
+    </div>
+
+	<!-- Dialog создания организации -->
+	<div id="org-overlay" class="overlay" aria-hidden="true"></div>
+	<div id="org-dialog" class="org-dialog" role="dialog" aria-modal="true" aria-labelledby="org-dialog-title" aria-hidden="true">
+		<div class="org-dialog__header">
+			<h2 id="org-dialog-title">Новая организация</h2>
+			<button class="icon-close" id="org-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
 		</div>
-	</section>
-	<section>
-		<p class="large">Вам комфортен внешний вид окружающей среды?</p>
-		<div class="rating-scale">
-			<button class="button b1">
-				<img src="img/icons/emoji-sad.png">
-				Нет
-			</button>
-			<button class="button b2 " id="b2">
-				<img src="img/icons/emoji-think-left.png">
-			</button>
-			<button class="button b3 " id="b3">
-				<img src="img/icons/emoji-quite.png">
-			</button>
-			<button class="button b4 " id="b4">
-				<img src="img/icons/emoji-think-right.png">
-			</button>
-			<button class="button b5">
-				<img src="img/icons/emoji.png">
-				Да
-			</button>
+		<form id="org-form" novalidate>
+			<div class="field-group">
+				<label for="org-address">Адрес</label>
+				<input type="text" id="org-address" name="address" readonly />
+			</div>
+			<div class="field-group">
+				<label for="org-type">Тип организации</label>
+				<select id="org-type" name="organization_type" required>
+					<option value="shop">Магазин</option>
+					<option value="cafe">Кафе</option>
+					<option value="office">Офис</option>
+					<option value="other" selected>Другое</option>
+				</select>
+			</div>
+			<div class="field-group two-cols">
+				<div>
+					<label for="org-lat">Широта</label>
+					<input type="text" id="org-lat" name="latitude" readonly />
+				</div>
+				<div>
+					<label for="org-lon">Долгота</label>
+					<input type="text" id="org-lon" name="longitude" readonly />
+				</div>
+			</div>
+			<div class="field-group">
+				<label for="org-map-file">Карта (изображение)</label>
+				<input type="file" id="org-map-file" accept="image/*" />
+			</div>
+			<div class="field-group">
+				<label for="org-picture-file">Фото</label>
+				<input type="file" id="org-picture-file" accept="image/*" />
+			</div>
+			<div class="org-errors" id="org-errors" aria-live="assertive"></div>
+			<div class="org-dialog__footer">
+				<button type="button" class="button attention-tertia ghost" id="org-cancel">Отмена</button>
+				<button type="submit" class="button attention-prima" id="org-submit">Создать</button>
+			</div>
+		</form>
+	</div>
+
+		<!-- Восстановленный bottom-sheet для общего фидбэка -->
+		<div id="sheet-overlay" class="overlay" aria-hidden="true"></div>
+		<div id="feedback-sheet" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="fb-title">
+			<div class="sheet-header">
+				<div class="drag-handle" aria-hidden="true"></div>
+				<h2 id="fb-title">Оцените сервис</h2>
+				<button class="icon-close" id="close-sheet" aria-label="Закрыть">×</button>
+			</div>
+			<div class="sheet-body">
+				<section class="block">
+					<p class="question">Как вам впечатление в целом?</p>
+					<div class="rating-scale">
+						<button type="button" class="button rate b1" data-value="1">1</button>
+						<button type="button" class="button rate b2" data-value="2">2</button>
+						<button type="button" class="button rate b3" data-value="3">3</button>
+						<button type="button" class="button rate b4" data-value="4">4</button>
+						<button type="button" class="button rate b5" data-value="5">5</button>
+					</div>
+				</section>
+				<section class="block">
+					<label for="comment" class="section-title">Комментарий</label>
+					<textarea id="comment" rows="3" placeholder="Ваши мысли..." maxlength="500"></textarea>
+					<button type="button" class="link-btn" id="tell-more">Подробнее</button>
+					<button type="button" class="link-btn" id="tell-less" style="display:none;">Скрыть</button>
+					<div id="more" aria-hidden="true">
+						<p class="small">Дополнительный блок (можно расширить позже).</p>
+					</div>
+				</section>
+			</div>
+			<div class="sheet-footer">
+				<button type="button" class="button ghost" id="cancel-feedback">Отмена</button>
+				<button type="button" class="button attention-prima" id="submit-feedback">Отправить</button>
+			</div>
 		</div>
-		<button class="button attention-tertia" id="tell-more">Я хочу подробнее оценить свой опыт</button>
-	</section>
-	<section id="more">
-		<textarea placeholder="Напишите свой комментарий здесь"></textarea>
-		<button class="button attention-tertia" id="tell-less">Свернуть</button>
-	</section>
-	</main>
+		<!-- Кнопка открытия фидбек-листа -->
+		<button id="open-feedback" class="fab" style="left:90px; bottom:24px; width:56px; height:56px; font-size:22px;">✉️</button>
 
-	<!--https://stackoverflow.com/questions/51677082/keeping-the-footer-at-the-bottom-of-the-page-in-mobile-view-->
-	<footer>
-		<button class="button   attention-tertia"> 
-			<i class="fa fa-user-o" aria-hidden="true"></i>
-		</button>
-		<a class="button attention-prima">Отправить</a>
+	<!-- Dialog информации об организации (read-only) -->
+	<div id="org-info-overlay" class="overlay" aria-hidden="true"></div>
+	<div id="org-info-dialog" class="org-dialog org-dialog--info" role="dialog" aria-modal="true" aria-labelledby="org-info-title" aria-hidden="true">
+		<div class="org-dialog__header">
+			<h2 id="org-info-title">Организация</h2>
+			<button class="icon-close small" id="org-info-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
+		</div>
+		<div class="org-info-body" id="org-info-body">
+			<p class="small">Загрузка...</p>
+		</div>
+		<div class="org-quick-comment" id="org-quick-comment" aria-live="polite">
+			<div class="oqc-row">
+				<textarea id="quick-comment-text" class="oqc-text" placeholder="Краткий отзыв" rows="2" maxlength="500"></textarea>
+			</div>
+			<div class="oqc-actions">
+				<button type="button" class="button attention-prima small" id="quick-comment-send" disabled>Отправить</button>
+				<button type="button" class="button attention-tertia small" id="open-detailed-comment">Оценить заведение</button>
+			</div>
+			<div class="oqc-status" id="quick-comment-status"></div>
+		</div>
+		<div class="org-dialog__footer">
+			<button type="button" class="button attention-tertia ghost" id="org-info-ok">Закрыть</button>
+		</div>
+	</div>
 
-		<button class="button attention-tertia">
-			<i class="fa fa-map" aria-hidden="true"></i>
-		</button>
+<!-- Детализированная оценка -->
+<div id="detail-overlay" class="overlay" aria-hidden="true"></div>
+<div id="detail-dialog" class="org-dialog org-dialog--detail" role="dialog" aria-modal="true" aria-labelledby="detail-title" aria-hidden="true">
+	<div class="org-dialog__header">
+		<h2 id="detail-title">Оценка заведения</h2>
+		<button class="icon-close small" id="detail-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
+	</div>
+	<form id="detail-form" novalidate>
+		<input type="hidden" name="organization_id" id="detail-org-id" />
+		<div class="detail-field">
+			<label for="detail-text">Общий отзыв</label>
+			<textarea id="detail-text" name="text" rows="3" placeholder="Общее впечатление"></textarea>
+		</div>
+		<div class="detail-grid" id="detail-grid">
+			<!-- параметры: выбор смайликов 1-5 -->
+			<div class="crit" data-key="appearance">
+				<label>Appearance</label>
+				<div class="crit-emojis" data-param="appearance"></div>
+				<input type="hidden" name="appearance_value" />
+			</div>
+			<div class="crit" data-key="lighting">
+				<label>Lighting</label>
+				<div class="crit-emojis" data-param="lighting"></div>
+				<input type="hidden" name="lighting_value" />
+			</div>
+			<div class="crit" data-key="smell">
+				<label>Smell</label>
+				<div class="crit-emojis" data-param="smell"></div>
+				<input type="hidden" name="smell_value" />
+			</div>
+			<div class="crit" data-key="temperature">
+				<label>Temperature</label>
+				<div class="crit-emojis" data-param="temperature"></div>
+				<input type="hidden" name="temperature_value" />
+			</div>
+			<div class="crit" data-key="tactility">
+				<label>Tactility</label>
+				<div class="crit-emojis" data-param="tactility"></div>
+				<input type="hidden" name="tactility_value" />
+			</div>
+			<div class="crit" data-key="signage">
+				<label>Signage</label>
+				<div class="crit-emojis" data-param="signage"></div>
+				<input type="hidden" name="signage_value" />
+			</div>
+			<div class="crit" data-key="intuitiveness">
+				<label>Intuitiveness</label>
+				<div class="crit-emojis" data-param="intuitiveness"></div>
+				<input type="hidden" name="intuitiveness_value" />
+			</div>
+			<div class="crit" data-key="staff_attitude">
+				<label>StaffAttitude</label>
+				<div class="crit-emojis" data-param="staff_attitude"></div>
+				<input type="hidden" name="staff_attitude_value" />
+			</div>
+			<div class="crit" data-key="people_density">
+				<label>PeopleDensity</label>
+				<div class="crit-emojis" data-param="people_density"></div>
+				<input type="hidden" name="people_density_value" />
+			</div>
+			<div class="crit" data-key="self_service">
+				<label>SelfService</label>
+				<div class="crit-emojis" data-param="self_service"></div>
+				<input type="hidden" name="self_service_value" />
+			</div>
+			<div class="crit" data-key="calmness">
+				<label>Calmness</label>
+				<div class="crit-emojis" data-param="calmness"></div>
+				<input type="hidden" name="calmness_value" />
+			</div>
+		</div>
+		<div class="detail-footer">
+			<span class="detail-status" id="detail-status"></span>
+			<div class="detail-actions">
+				<button type="button" class="button attention-tertia ghost" id="detail-cancel">Отмена</button>
+				<button type="submit" class="button attention-prima" id="detail-submit">Отправить</button>
+			</div>
+		</div>
+	</form>
+</div>
 
-	</footer>
-		
-	
-</body>
-
-</html>
-
+	<!-- Оверлей и модальное окно авторизации -->
+	<div id="auth-overlay" class="overlay" aria-hidden="true"></div>
+	<div id="auth-dialog" class="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title" aria-hidden="true">
+		<div class="auth-dialog__header">
+			<h2 id="auth-dialog-title">Вход</h2>
+			<button class="icon-close" id="auth-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
+		</div>
+		<div class="auth-dialog__tabs" role="tablist">
+			<button class="auth-tab active" data-mode="login" role="tab" aria-selected="true">Вход</button>
+			<button class="auth-tab" data-mode="register" role="tab" aria-selected="false">Регистрация</button>
+		</div>
+		<form id="auth-form" novalidate>
+			<div class="field-group" data-field="name" style="display:none;">
+				<label for="auth-name">Имя</label>
+				<input type="text" id="auth-name" name="name" autocomplete="name" placeholder="Ваше имя" />
+			</div>
+			<div class="field-group">
+				<label for="auth-email">Email</label>
+				<input type="email" id="auth-email" name="email" autocomplete="email" required placeholder="you@example.com" />
+			</div>
+			<div class="field-group">
+				<label for="auth-password">Пароль</label>
+				<input type="password" id="auth-password" name="password" autocomplete="current-password" required placeholder="••••••••" minlength="4" />
+			</div>
+			<div class="field-group" data-field="role" style="display:none;">
+				<label for="auth-role">Роль</label>
+				<select id="auth-role" name="role">
+					<option value="user" selected>Пользователь</option>
+					<option value="admin">Администратор</option>
+				</select>
+			</div>
+			<div class="auth-errors" id="auth-errors" aria-live="assertive"></div>
+			<button type="submit" class="button attention-prima auth-submit">Продолжить</button>
+		</form>
+		<div class="auth-dialog__footer">
+			<button id="auth-logout" class="button attention-tertia ghost" style="display:none;">Выйти</button>
+		</div>
+		<!-- Профиль и пользовательские параметры -->
+		<div id="user-profile" class="profile-panel" aria-hidden="true">
+			<div class="profile-info">
+				<p class="prof-line"><strong id="prof-name">—</strong></p>
+				<p class="prof-line" id="prof-email">—</p>
+				<p class="prof-line small" id="prof-role">—</p>
+			</div>
+			<form id="user-params-form" novalidate>
+				<fieldset class="params-grid">
+					<legend class="visually-hidden">Параметры восприятия</legend>
+					<label class="param-item"><input type="checkbox" name="appearance"> <span>Внешний вид</span></label>
+					<label class="param-item"><input type="checkbox" name="lighting"> <span>Освещение</span></label>
+					<label class="param-item"><input type="checkbox" name="smell"> <span>Запах</span></label>
+					<label class="param-item"><input type="checkbox" name="temperature"> <span>Температура</span></label>
+					<label class="param-item"><input type="checkbox" name="tactility"> <span>Тактильность</span></label>
+					<label class="param-item"><input type="checkbox" name="signage"> <span>Указатели и инструкции</span></label>
+					<label class="param-item"><input type="checkbox" name="intuitiveness"> <span>Интуитивность</span></label>
+					<label class="param-item"><input type="checkbox" name="staff_attitude"> <span>Отношение персонала</span></label>
+					<label class="param-item"><input type="checkbox" name="people_density"> <span>Количество людей</span></label>
+					<label class="param-item"><input type="checkbox" name="self_service"> <span>Самообслуживание</span></label>
+					<label class="param-item"><input type="checkbox" name="calmness"> <span>Спокойное место</span></label>
+				</fieldset>
+				<div class="params-actions">
+					<button type="button" id="save-user-params" class="button attention-prima small">Сохранить</button>
+					<span id="user-params-status" class="params-status" aria-live="polite"></span>
+				</div>
+			</form>
+		</div>
+	</div>
+<!-- (feedback sheet JS removed) -->
 <script>
-	let tell = document.getElementById('tell-more');
-	let less = document.getElementById('tell-less');
-	let b2 = document.getElementById('b2');
-	let b3 = document.getElementById('b3');
-	let b4 = document.getElementById('b4');
-    tell.onclick = function() {
-      document.getElementById('more').style.display = "flex";
-	  tell.style.display = "none";
-	  b2.style.display = "flex";
-	  b3.style.display = "flex";
-	  b4.style.display = "flex";
-    }
+// ===== Поиск по типу =====
+(function(){
+	const openBtn = document.getElementById('open-search');
+	const dlg = document.getElementById('search-dialog');
+	const ov = document.getElementById('search-overlay');
+	const closeBtn = document.getElementById('search-close');
+	const cancelBtn = document.getElementById('search-cancel');
+	const form = document.getElementById('search-form');
+	const statusEl = document.getElementById('search-status');
+	const listEl = document.getElementById('srp-list');
+	const countEl = document.getElementById('srp-count');
+	const panel = document.getElementById('search-results-panel');
+	const clearBtn = document.getElementById('srp-clear');
+	if(!window.APP) window.APP = {}; if(!window.APP.searchMarkers) window.APP.searchMarkers = [];
 
-	less.onclick = function() {
-      document.getElementById('more').style.display = "none";
-	  tell.style.display = "block";
-	  b2.style.display = "none";
-	  b3.style.display = "none";
-	  b4.style.display = "none";
-    }
-  </script>
+	function openSearch(){ dlg.classList.add('open'); dlg.removeAttribute('aria-hidden'); ov.classList.add('visible'); ov.removeAttribute('aria-hidden'); }
+	function closeSearch(){ dlg.classList.remove('open'); dlg.setAttribute('aria-hidden','true'); ov.classList.remove('visible'); ov.setAttribute('aria-hidden','true'); }
+	function clearMarkers(){
+		if(window.APP.searchMarkers){ window.APP.searchMarkers.forEach(m=>{ try{ m.destroy(); }catch{} }); }
+		window.APP.searchMarkers = [];
+		panel.classList.add('hidden'); listEl.innerHTML=''; countEl.textContent='—';
+	}
+	function renderResults(items){
+		clearMarkers();
+		if(!items || !items.length){ statusEl.textContent='Ничего не найдено'; return; }
+		if(!window.APP.map){ statusEl.textContent='Нет карты'; return; }
+		const bounds = { minLon:Infinity, maxLon:-Infinity, minLat:Infinity, maxLat:-Infinity };
+		items.forEach(it=>{
+			const org = it.organization || {}; const lon = org.longitude; const lat = org.latitude;
+			if(typeof lon !== 'number' || typeof lat !== 'number') return;
+			if(lon<bounds.minLon) bounds.minLon=lon; if(lon>bounds.maxLon) bounds.maxLon=lon; if(lat<bounds.minLat) bounds.minLat=lat; if(lat>bounds.maxLat) bounds.maxLat=lat;
+			const marker = new mapgl.Marker(window.APP.map, { coordinates:[lon,lat] });
+			window.APP.searchMarkers.push(marker);
+		});
+		countEl.textContent = 'Найдено: '+items.length;
+		listEl.innerHTML = items.map(it=>{
+			const org = it.organization||{}; const avg = it.average != null ? it.average.toFixed(2) : '—';
+			return `<div class="srp-item"><span class="srp-addr">${(org.address||'-')}</span><span class="srp-avg">${avg}</span></div>`;
+		}).join('');
+		panel.classList.remove('hidden');
+		// авто-приближение (простое)
+		if(window.APP.searchMarkers.length){
+			try {
+				const cx = (bounds.minLon + bounds.maxLon)/2; const cy = (bounds.minLat + bounds.maxLat)/2;
+				window.APP.map.setCenter([cx, cy]);
+			} catch{}
+		}
+	}
+	async function performSearch(body){
+		statusEl.textContent='Поиск...'; statusEl.className='field-group small-info searching';
+		try {
+			const res = await fetch(`${ORG_API}/organization/params/average/by-type`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+			let data=null; try{ data=await res.json(); }catch{ data={}; }
+			if(!res.ok){ statusEl.textContent = data.error||('Ошибка '+res.status); statusEl.className='field-group small-info error'; return; }
+			statusEl.textContent='Готово'; statusEl.className='field-group small-info ok';
+			renderResults(data.items||[]);
+		} catch(e){ statusEl.textContent='Сеть: '+e.message; statusEl.className='field-group small-info error'; }
+	}
+	form.addEventListener('submit', async (e)=>{
+		e.preventDefault();
+		const orgType = form.organization_type.value.trim();
+		const thrRaw = form.threshold.value.trim();
+		if(!orgType){ statusEl.textContent='Укажите тип'; statusEl.className='field-group small-info error'; return; }
+		// Получаем пользовательские параметры
+		const paramNames = await getUserParamNames();
+		const body = { organization_type: orgType, params: paramNames };
+		if(thrRaw){ const thr = parseFloat(thrRaw); if(!isNaN(thr)) body.threshold = thr; }
+		performSearch(body);
+	});
+	openBtn?.addEventListener('click', openSearch);
+	closeBtn?.addEventListener('click', closeSearch);
+	cancelBtn?.addEventListener('click', closeSearch);
+	ov?.addEventListener('click', closeSearch);
+	clearBtn?.addEventListener('click', clearMarkers);
+	document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && dlg.classList.contains('open')) closeSearch(); });
+})();
+</script>
+<script>
+// Боковая панель поиска по типу и порогу
+(function(){
+	if(!window.APP) window.APP = {}; if(!window.APP.searchMarkers) window.APP.searchMarkers = [];
+	const panel = document.getElementById('side-search-panel');
+	const toggleBtn = document.getElementById('side-search-toggle');
+	const closeBtn = document.getElementById('side-search-close');
+	const form = document.getElementById('side-search-form');
+	const statusEl = document.getElementById('ssp-status');
+	const resultsEl = document.getElementById('ssp-results');
+	const clearBtn = document.getElementById('ssp-clear');
+	const typeInput = document.getElementById('ssp-type');
+	const thrInput = document.getElementById('ssp-threshold');
+
+	function openPanel(){ panel.classList.add('open'); panel.removeAttribute('aria-hidden'); toggleBtn.setAttribute('aria-expanded','true'); }
+	function closePanel(){ panel.classList.remove('open'); panel.setAttribute('aria-hidden','true'); toggleBtn.setAttribute('aria-expanded','false'); }
+	toggleBtn?.addEventListener('click', ()=>{ panel.classList.contains('open')? closePanel(): openPanel(); });
+	closeBtn?.addEventListener('click', closePanel);
+	document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && panel.classList.contains('open')) closePanel(); });
+
+	function clearMarkers(){ if(window.APP.searchMarkers){ window.APP.searchMarkers.forEach(m=>{ try{ m.destroy(); }catch{} }); } window.APP.searchMarkers = []; }
+	function resetResults(){ clearMarkers(); resultsEl.innerHTML=''; clearBtn.disabled = true; }
+	clearBtn.addEventListener('click', ()=>{ resetResults(); statusEl.textContent=''; });
+
+	function renderItems(items){
+		resetResults();
+		if(!items || !items.length){ statusEl.textContent='Ничего не найдено'; return; }
+		if(!window.APP.map){ statusEl.textContent='Карта не готова'; return; }
+		const bounds = { minLon:Infinity, maxLon:-Infinity, minLat:Infinity, maxLat:-Infinity };
+		const frag = document.createDocumentFragment();
+		items.forEach(it=>{
+			const org = it.organization||{}; const lon = org.longitude; const lat = org.latitude;
+			if(typeof lon !== 'number' || typeof lat !== 'number') return;
+			if(lon<bounds.minLon) bounds.minLon=lon; if(lon>bounds.maxLon) bounds.maxLon=lon; if(lat<bounds.minLat) bounds.minLat=lat; if(lat>bounds.maxLat) bounds.maxLat=lat;
+			const marker = new mapgl.Marker(window.APP.map, { coordinates:[lon,lat] });
+			window.APP.searchMarkers.push(marker);
+			const row = document.createElement('div');
+			row.className='ssp-item';
+			const avg = (it.average!=null)? Number(it.average).toFixed(2):'—';
+			row.innerHTML = `<span class="addr">${org.address||'-'}</span><span class="avg">${avg}</span>`;
+			row.addEventListener('click', ()=>{ try { window.APP.map.setCenter([lon,lat]); window.APP.map.setZoom && window.APP.map.setZoom(16); } catch{} });
+			frag.appendChild(row);
+		});
+		resultsEl.appendChild(frag);
+		clearBtn.disabled = false;
+		statusEl.textContent = 'Найдено: '+window.APP.searchMarkers.length;
+		if(window.APP.searchMarkers.length){ try { const cx=(bounds.minLon+bounds.maxLon)/2; const cy=(bounds.minLat+bounds.maxLat)/2; window.APP.map.setCenter([cx,cy]); } catch{} }
+	}
+
+	async function performSearch(body){
+		statusEl.textContent='Поиск...'; statusEl.classList.remove('error');
+		try {
+			const res = await fetch(`${ORG_API}/organization/params/average/by-type`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+			let data=null; try{ data=await res.json(); }catch{ data={}; }
+			if(!res.ok){ statusEl.textContent=data.error||('Ошибка '+res.status); statusEl.classList.add('error'); return; }
+			renderItems(data.items||[]);
+		} catch(e){ statusEl.textContent='Сеть: '+e.message; statusEl.classList.add('error'); }
+	}
+
+	form.addEventListener('submit', async (e)=>{
+		e.preventDefault();
+		const orgType = typeInput.value.trim();
+		if(!orgType){ statusEl.textContent='Укажите тип'; statusEl.classList.add('error'); return; }
+		const params = await getUserParamNames();
+		const body = { organization_type: orgType, params };
+		const thrRaw = thrInput.value.trim(); if(thrRaw){ const thr=parseFloat(thrRaw); if(!isNaN(thr)) body.threshold=thr; }
+		performSearch(body);
+	});
+})();
+</script>
+<script>
+// ВОССТАНОВЛЕНО: управление старым bottom-sheet (feedback) с null-safe проверками
+(() => {
+	const sheet = document.getElementById('feedback-sheet');
+	const overlay = document.getElementById('sheet-overlay');
+	const openBtn = document.getElementById('open-feedback');
+	const closeBtn = document.getElementById('close-sheet');
+	const cancelBtn = document.getElementById('cancel-feedback');
+	const tellMore = document.getElementById('tell-more');
+	const tellLess = document.getElementById('tell-less');
+	const more = document.getElementById('more');
+	const submitBtn = document.getElementById('submit-feedback');
+	const commentInput = document.getElementById('comment');
+	const ratingButtons = document.querySelectorAll('.rate');
+	let currentRating = null;
+
+	function openSheet(){ if(!sheet||!overlay) return; sheet.classList.add('open'); overlay.classList.add('visible'); overlay.removeAttribute('aria-hidden'); document.body.classList.add('noscroll'); }
+	function closeSheet(){ if(!sheet||!overlay) return; sheet.classList.remove('open'); overlay.classList.remove('visible'); overlay.setAttribute('aria-hidden','true'); document.body.classList.remove('noscroll'); }
+
+	openBtn?.addEventListener('click', openSheet);
+	overlay?.addEventListener('click', closeSheet);
+	closeBtn?.addEventListener('click', closeSheet);
+	cancelBtn?.addEventListener('click', closeSheet);
+
+	tellMore?.addEventListener('click', () => { if(!more||!tellMore) return; more.classList.add('expanded'); more.setAttribute('aria-hidden','false'); tellMore.style.display='none'; });
+	tellLess?.addEventListener('click', () => { if(!more||!tellMore) return; more.classList.remove('expanded'); more.setAttribute('aria-hidden','true'); tellMore.style.display='inline-block'; });
+
+	ratingButtons.forEach(btn => {
+		btn.addEventListener('click', () => {
+			ratingButtons.forEach(b => b.classList.remove('selected'));
+			btn.classList.add('selected');
+			currentRating = btn.dataset.value;
+		});
+	});
+
+	submitBtn?.addEventListener('click', () => {
+		console.log('Submit rating:', currentRating, 'comment:', commentInput?.value);
+		closeSheet();
+	});
+
+	document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && sheet?.classList.contains('open')) closeSheet(); });
+})();
+</script>
+</body>
+</html>
