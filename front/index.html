@@ -461,88 +461,94 @@
 	<!-- Полноэкранная карта -->
 	<div id="map" aria-label="Карта 2GIS" role="region"></div>
 
+	<!-- Панель выбранного адреса (восстановлено) -->
+	<div class="address-panel" id="address-panel">
+		<div id="selected-address" class="address-pill" aria-live="polite">Выберите точку на карте</div>
+		<button id="open-org-dialog" class="button attention-prima small" disabled style="margin-left:8px;" aria-disabled="true">Создать организацию</button>
+	</div>
+
+	<!-- Боковая кнопка поиска -->
+	<button id="side-search-toggle" class="side-search-toggle" aria-label="Поиск" aria-haspopup="true" aria-expanded="false">🔍</button>
+
+	<!-- Боковая панель поиска -->
+	<aside id="side-search-panel" class="side-search-panel" aria-hidden="true" role="complementary" aria-label="Поиск организаций по типу и порогу">
+		<header class="ssp-header">
+			<h2 class="ssp-title">Поиск</h2>
+			<button id="side-search-close" class="icon-close small" aria-label="Закрыть панель">×</button>
+		</header>
+		<form id="side-search-form" class="ssp-form" novalidate>
+			<div class="ssp-field">
+				<label for="ssp-type">Тип</label>
+				<input id="ssp-type" name="organization_type" list="ssp-type-list" placeholder="например: офис" autocomplete="off" />
+				<datalist id="ssp-type-list">
+					<option value="офис"></option>
+					<option value="магазин"></option>
+					<option value="кафе"></option>
+					<option value="other"></option>
+					<option value="shop"></option>
+					<option value="cafe"></option>
+					<option value="office"></option>
+				</datalist>
+			</div>
+			<div class="ssp-field">
+				<label for="ssp-threshold">Порог (0–5)</label>
+				<input id="ssp-threshold" name="threshold" type="number" min="0" max="5" step="0.1" placeholder="3" />
+			</div>
+			<div class="ssp-actions">
+				<button type="submit" class="button attention-prima small" id="ssp-run">Найти</button>
+				<button type="button" class="button attention-tertia small" id="ssp-clear" disabled>Очистить</button>
+			</div>
+			<div id="ssp-status" class="ssp-status" aria-live="polite"></div>
+		</form>
+		<div id="ssp-results" class="ssp-results" aria-live="polite"></div>
+	</aside>
+
 	<!-- Кнопка авторизации / профиль -->
 	<button id="auth-btn" class="auth-btn" aria-haspopup="dialog" aria-expanded="false">
 		<span class="auth-btn__label">Войти</span>
 		<i class="fa fa-user" aria-hidden="true"></i>
 	</button>
 
-	<!-- Плавающая кнопка открытия панели -->
-	<button id="open-feedback" class="fab" aria-label="Открыть форму отзыва">
-		<i class="fa fa-commenting" aria-hidden="true"></i>
-	</button>
+    <!-- Кнопка запуска поиска -->
+    <button id="open-search" class="fab fab-text" aria-label="Поиск организаций">Поиск</button>
 
-	<!-- Оверлей затемнения -->
-	<div id="sheet-overlay" class="overlay" tabindex="-1" aria-hidden="true"></div>
+    <!-- Диалог поиска по типу -->
+    <div id="search-overlay" class="overlay" aria-hidden="true"></div>
+    <div id="search-dialog" class="org-dialog org-dialog--search" role="dialog" aria-modal="true" aria-labelledby="search-title" aria-hidden="true">
+        <div class="org-dialog__header">
+            <h2 id="search-title">Поиск организаций</h2>
+            <button class="icon-close small" id="search-close" aria-label="Закрыть"><i class="fa fa-times" aria-hidden="true"></i></button>
+        </div>
+        <form id="search-form" novalidate>
+            <div class="field-group">
+                <label for="search-type">Тип организации</label>
+                <select id="search-type" name="organization_type" required>
+                    <option value="shop">Магазин</option>
+                    <option value="cafe">Кафе</option>
+                    <option value="office">Офис</option>
+                    <option value="other" selected>Другое</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label for="search-threshold">Порог (0–5.0)</label>
+                <input type="number" id="search-threshold" name="threshold" min="0" max="5" step="0.1" placeholder="3.0" />
+            </div>
+            <div class="field-group small-info" id="search-status" aria-live="polite"></div>
+            <div class="org-dialog__footer">
+                <button type="button" class="button attention-tertia ghost" id="search-cancel">Отмена</button>
+                <button type="submit" class="button attention-prima" id="search-submit">Найти</button>
+            </div>
+        </form>
+    </div>
 
-	<!-- Выезжающая панель с формой -->
-	<div id="feedback-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-		<div class="sheet-header">
-			<div class="drag-handle" aria-hidden="true"></div>
-			<h2 id="sheet-title">Добавить отзыв</h2>
-			<button class="icon-close" id="close-sheet" aria-label="Закрыть окно">
-				<i class="fa fa-times" aria-hidden="true"></i>
-			</button>
-		</div>
-		<div class="sheet-body">
-			<div class="address-line" style="flex-direction:column; gap:10px;">
-				<span id="selected-address" class="address-pill">Выберите точку на карте</span>
-				<button id="open-org-dialog" class="button attention-prima small" disabled style="align-self:center;">Создать организацию</button>
-				<div id="org-existing-info" class="org-existing hidden"></div>
-			</div>
-			<section class="block">
-				<p class="section-title">Выберите категорию</p>
-				<div class="slider-chooser compact">
-					<button class="button attention-tertia arrow" data-shift="-1">
-						<i class="fa fa-angle-left" aria-hidden="true"></i>
-					</button>
-					<div class="parent categories" id="cat-scroll">
-						<button class="button child active">Внешний вид</button>
-						<button class="button child">Свет</button>
-						<button class="button child">Запах</button>
-						<button class="button child">Инструкции</button>
-					</div>
-					<button class="button attention-tertia arrow" data-shift="1">
-						<i class="fa fa-angle-right" aria-hidden="true"></i>
-					</button>
-				</div>
-			</section>
-			<section class="block">
-				<p class="large question">Вам комфортен внешний вид окружающей среды?</p>
-				<div class="rating-scale" id="rating-scale">
-					<button class="button b1 rate" data-value="1">
-						<img src="img/icons/emoji-sad.png" alt="Очень плохо">
-						<span>Нет</span>
-					</button>
-					<button class="button b2 rate" id="b2" data-value="2">
-						<img src="img/icons/emoji-think-left.png" alt="Скорее плохо">
-					</button>
-					<button class="button b3 rate" id="b3" data-value="3">
-						<img src="img/icons/emoji-quite.png" alt="Нейтрально">
-					</button>
-					<button class="button b4 rate" id="b4" data-value="4">
-						<img src="img/icons/emoji-think-right.png" alt="Скорее хорошо">
-					</button>
-					<button class="button b5 rate" data-value="5">
-						<img src="img/icons/emoji.png" alt="Отлично">
-						<span>Да</span>
-					</button>
-				</div>
-				<button class="link-btn" id="tell-more">Подробнее</button>
-			</section>
-			<section id="more" class="block more-collapsed" aria-hidden="true">
-				<label for="comment" class="visually-hidden">Комментарий</label>
-				<textarea id="comment" placeholder="Опишите свой опыт" rows="5"></textarea>
-				<div class="row-end">
-					<button class="link-btn" id="tell-less">Свернуть</button>
-				</div>
-			</section>
-		</div>
-		<div class="sheet-footer">
-			<button class="button attention-tertia ghost" id="cancel-feedback">Отмена</button>
-			<button class="button attention-prima" id="submit-feedback">Отправить</button>
-		</div>
-	</div>
+    <!-- Панель результатов -->
+    <div id="search-results-panel" class="search-results-panel hidden" aria-live="polite">
+        <div class="srp-header">
+            <span id="srp-count">—</span>
+            <button id="srp-clear" class="icon-clear" aria-label="Очистить результаты">×</button>
+        </div>
+        <div id="srp-list" class="srp-list"></div>
+    </div>
 
 	<!-- Dialog создания организации -->
 	<div id="org-overlay" class="overlay" aria-hidden="true"></div>
@@ -590,6 +596,43 @@
 			</div>
 		</form>
 	</div>
+
+		<!-- Восстановленный bottom-sheet для общего фидбэка -->
+		<div id="sheet-overlay" class="overlay" aria-hidden="true"></div>
+		<div id="feedback-sheet" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="fb-title">
+			<div class="sheet-header">
+				<div class="drag-handle" aria-hidden="true"></div>
+				<h2 id="fb-title">Оцените сервис</h2>
+				<button class="icon-close" id="close-sheet" aria-label="Закрыть">×</button>
+			</div>
+			<div class="sheet-body">
+				<section class="block">
+					<p class="question">Как вам впечатление в целом?</p>
+					<div class="rating-scale">
+						<button type="button" class="button rate b1" data-value="1">1</button>
+						<button type="button" class="button rate b2" data-value="2">2</button>
+						<button type="button" class="button rate b3" data-value="3">3</button>
+						<button type="button" class="button rate b4" data-value="4">4</button>
+						<button type="button" class="button rate b5" data-value="5">5</button>
+					</div>
+				</section>
+				<section class="block">
+					<label for="comment" class="section-title">Комментарий</label>
+					<textarea id="comment" rows="3" placeholder="Ваши мысли..." maxlength="500"></textarea>
+					<button type="button" class="link-btn" id="tell-more">Подробнее</button>
+					<button type="button" class="link-btn" id="tell-less" style="display:none;">Скрыть</button>
+					<div id="more" aria-hidden="true">
+						<p class="small">Дополнительный блок (можно расширить позже).</p>
+					</div>
+				</section>
+			</div>
+			<div class="sheet-footer">
+				<button type="button" class="button ghost" id="cancel-feedback">Отмена</button>
+				<button type="button" class="button attention-prima" id="submit-feedback">Отправить</button>
+			</div>
+		</div>
+		<!-- Кнопка открытия фидбек-листа -->
+		<button id="open-feedback" class="fab" style="left:90px; bottom:24px; width:56px; height:56px; font-size:22px;">✉️</button>
 
 	<!-- Dialog информации об организации (read-only) -->
 	<div id="org-info-overlay" class="overlay" aria-hidden="true"></div>
@@ -763,69 +806,197 @@
 			</form>
 		</div>
 	</div>
-</body>
-</html>
-
+<!-- (feedback sheet JS removed) -->
 <script>
-// Управление панелью и интерактивом
-(() => {
-  const sheet = document.getElementById('feedback-sheet');
-  const overlay = document.getElementById('sheet-overlay');
-  const openBtn = document.getElementById('open-feedback');
-  const closeBtn = document.getElementById('close-sheet');
-  const cancelBtn = document.getElementById('cancel-feedback');
-  const tellMore = document.getElementById('tell-more');
-  const tellLess = document.getElementById('tell-less');
-  const more = document.getElementById('more');
-  const ratingButtons = document.querySelectorAll('.rate');
-  let currentRating = null;
+// ===== Поиск по типу =====
+(function(){
+	const openBtn = document.getElementById('open-search');
+	const dlg = document.getElementById('search-dialog');
+	const ov = document.getElementById('search-overlay');
+	const closeBtn = document.getElementById('search-close');
+	const cancelBtn = document.getElementById('search-cancel');
+	const form = document.getElementById('search-form');
+	const statusEl = document.getElementById('search-status');
+	const listEl = document.getElementById('srp-list');
+	const countEl = document.getElementById('srp-count');
+	const panel = document.getElementById('search-results-panel');
+	const clearBtn = document.getElementById('srp-clear');
+	if(!window.APP) window.APP = {}; if(!window.APP.searchMarkers) window.APP.searchMarkers = [];
 
-  function openSheet() {
-	sheet.classList.add('open');
-	overlay.classList.add('visible');
-	overlay.removeAttribute('aria-hidden');
-	document.body.classList.add('noscroll');
-  }
-  function closeSheet() {
-	sheet.classList.remove('open');
-	overlay.classList.remove('visible');
-	overlay.setAttribute('aria-hidden','true');
-	document.body.classList.remove('noscroll');
-  }
-
-  openBtn.addEventListener('click', openSheet);
-  overlay.addEventListener('click', closeSheet);
-  closeBtn.addEventListener('click', closeSheet);
-  if (cancelBtn) cancelBtn.addEventListener('click', closeSheet);
-
-  tellMore.addEventListener('click', () => {
-	more.classList.add('expanded');
-	more.setAttribute('aria-hidden','false');
-	tellMore.style.display = 'none';
-  });
-  tellLess.addEventListener('click', () => {
-	more.classList.remove('expanded');
-	more.setAttribute('aria-hidden','true');
-	tellMore.style.display = 'inline-block';
-  });
-
-  ratingButtons.forEach(btn => {
-	btn.addEventListener('click', () => {
-	  ratingButtons.forEach(b => b.classList.remove('selected'));
-	  btn.classList.add('selected');
-	  currentRating = btn.dataset.value;
-	})
-  });
-
-  document.getElementById('submit-feedback').addEventListener('click', () => {
-	// Заглушка: можно интегрировать отправку на API
-	console.log('Submit rating:', currentRating, 'comment:', document.getElementById('comment').value);
-	closeSheet();
-  });
-
-  // Закрытие по ESC
-  document.addEventListener('keydown', (e) => {
-	if (e.key === 'Escape' && sheet.classList.contains('open')) closeSheet();
-  });
+	function openSearch(){ dlg.classList.add('open'); dlg.removeAttribute('aria-hidden'); ov.classList.add('visible'); ov.removeAttribute('aria-hidden'); }
+	function closeSearch(){ dlg.classList.remove('open'); dlg.setAttribute('aria-hidden','true'); ov.classList.remove('visible'); ov.setAttribute('aria-hidden','true'); }
+	function clearMarkers(){
+		if(window.APP.searchMarkers){ window.APP.searchMarkers.forEach(m=>{ try{ m.destroy(); }catch{} }); }
+		window.APP.searchMarkers = [];
+		panel.classList.add('hidden'); listEl.innerHTML=''; countEl.textContent='—';
+	}
+	function renderResults(items){
+		clearMarkers();
+		if(!items || !items.length){ statusEl.textContent='Ничего не найдено'; return; }
+		if(!window.APP.map){ statusEl.textContent='Нет карты'; return; }
+		const bounds = { minLon:Infinity, maxLon:-Infinity, minLat:Infinity, maxLat:-Infinity };
+		items.forEach(it=>{
+			const org = it.organization || {}; const lon = org.longitude; const lat = org.latitude;
+			if(typeof lon !== 'number' || typeof lat !== 'number') return;
+			if(lon<bounds.minLon) bounds.minLon=lon; if(lon>bounds.maxLon) bounds.maxLon=lon; if(lat<bounds.minLat) bounds.minLat=lat; if(lat>bounds.maxLat) bounds.maxLat=lat;
+			const marker = new mapgl.Marker(window.APP.map, { coordinates:[lon,lat] });
+			window.APP.searchMarkers.push(marker);
+		});
+		countEl.textContent = 'Найдено: '+items.length;
+		listEl.innerHTML = items.map(it=>{
+			const org = it.organization||{}; const avg = it.average != null ? it.average.toFixed(2) : '—';
+			return `<div class="srp-item"><span class="srp-addr">${(org.address||'-')}</span><span class="srp-avg">${avg}</span></div>`;
+		}).join('');
+		panel.classList.remove('hidden');
+		// авто-приближение (простое)
+		if(window.APP.searchMarkers.length){
+			try {
+				const cx = (bounds.minLon + bounds.maxLon)/2; const cy = (bounds.minLat + bounds.maxLat)/2;
+				window.APP.map.setCenter([cx, cy]);
+			} catch{}
+		}
+	}
+	async function performSearch(body){
+		statusEl.textContent='Поиск...'; statusEl.className='field-group small-info searching';
+		try {
+			const res = await fetch(`${ORG_API}/organization/params/average/by-type`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+			let data=null; try{ data=await res.json(); }catch{ data={}; }
+			if(!res.ok){ statusEl.textContent = data.error||('Ошибка '+res.status); statusEl.className='field-group small-info error'; return; }
+			statusEl.textContent='Готово'; statusEl.className='field-group small-info ok';
+			renderResults(data.items||[]);
+		} catch(e){ statusEl.textContent='Сеть: '+e.message; statusEl.className='field-group small-info error'; }
+	}
+	form.addEventListener('submit', async (e)=>{
+		e.preventDefault();
+		const orgType = form.organization_type.value.trim();
+		const thrRaw = form.threshold.value.trim();
+		if(!orgType){ statusEl.textContent='Укажите тип'; statusEl.className='field-group small-info error'; return; }
+		// Получаем пользовательские параметры
+		const paramNames = await getUserParamNames();
+		const body = { organization_type: orgType, params: paramNames };
+		if(thrRaw){ const thr = parseFloat(thrRaw); if(!isNaN(thr)) body.threshold = thr; }
+		performSearch(body);
+	});
+	openBtn?.addEventListener('click', openSearch);
+	closeBtn?.addEventListener('click', closeSearch);
+	cancelBtn?.addEventListener('click', closeSearch);
+	ov?.addEventListener('click', closeSearch);
+	clearBtn?.addEventListener('click', clearMarkers);
+	document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && dlg.classList.contains('open')) closeSearch(); });
 })();
 </script>
+<script>
+// Боковая панель поиска по типу и порогу
+(function(){
+	if(!window.APP) window.APP = {}; if(!window.APP.searchMarkers) window.APP.searchMarkers = [];
+	const panel = document.getElementById('side-search-panel');
+	const toggleBtn = document.getElementById('side-search-toggle');
+	const closeBtn = document.getElementById('side-search-close');
+	const form = document.getElementById('side-search-form');
+	const statusEl = document.getElementById('ssp-status');
+	const resultsEl = document.getElementById('ssp-results');
+	const clearBtn = document.getElementById('ssp-clear');
+	const typeInput = document.getElementById('ssp-type');
+	const thrInput = document.getElementById('ssp-threshold');
+
+	function openPanel(){ panel.classList.add('open'); panel.removeAttribute('aria-hidden'); toggleBtn.setAttribute('aria-expanded','true'); }
+	function closePanel(){ panel.classList.remove('open'); panel.setAttribute('aria-hidden','true'); toggleBtn.setAttribute('aria-expanded','false'); }
+	toggleBtn?.addEventListener('click', ()=>{ panel.classList.contains('open')? closePanel(): openPanel(); });
+	closeBtn?.addEventListener('click', closePanel);
+	document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && panel.classList.contains('open')) closePanel(); });
+
+	function clearMarkers(){ if(window.APP.searchMarkers){ window.APP.searchMarkers.forEach(m=>{ try{ m.destroy(); }catch{} }); } window.APP.searchMarkers = []; }
+	function resetResults(){ clearMarkers(); resultsEl.innerHTML=''; clearBtn.disabled = true; }
+	clearBtn.addEventListener('click', ()=>{ resetResults(); statusEl.textContent=''; });
+
+	function renderItems(items){
+		resetResults();
+		if(!items || !items.length){ statusEl.textContent='Ничего не найдено'; return; }
+		if(!window.APP.map){ statusEl.textContent='Карта не готова'; return; }
+		const bounds = { minLon:Infinity, maxLon:-Infinity, minLat:Infinity, maxLat:-Infinity };
+		const frag = document.createDocumentFragment();
+		items.forEach(it=>{
+			const org = it.organization||{}; const lon = org.longitude; const lat = org.latitude;
+			if(typeof lon !== 'number' || typeof lat !== 'number') return;
+			if(lon<bounds.minLon) bounds.minLon=lon; if(lon>bounds.maxLon) bounds.maxLon=lon; if(lat<bounds.minLat) bounds.minLat=lat; if(lat>bounds.maxLat) bounds.maxLat=lat;
+			const marker = new mapgl.Marker(window.APP.map, { coordinates:[lon,lat] });
+			window.APP.searchMarkers.push(marker);
+			const row = document.createElement('div');
+			row.className='ssp-item';
+			const avg = (it.average!=null)? Number(it.average).toFixed(2):'—';
+			row.innerHTML = `<span class="addr">${org.address||'-'}</span><span class="avg">${avg}</span>`;
+			row.addEventListener('click', ()=>{ try { window.APP.map.setCenter([lon,lat]); window.APP.map.setZoom && window.APP.map.setZoom(16); } catch{} });
+			frag.appendChild(row);
+		});
+		resultsEl.appendChild(frag);
+		clearBtn.disabled = false;
+		statusEl.textContent = 'Найдено: '+window.APP.searchMarkers.length;
+		if(window.APP.searchMarkers.length){ try { const cx=(bounds.minLon+bounds.maxLon)/2; const cy=(bounds.minLat+bounds.maxLat)/2; window.APP.map.setCenter([cx,cy]); } catch{} }
+	}
+
+	async function performSearch(body){
+		statusEl.textContent='Поиск...'; statusEl.classList.remove('error');
+		try {
+			const res = await fetch(`${ORG_API}/organization/params/average/by-type`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+			let data=null; try{ data=await res.json(); }catch{ data={}; }
+			if(!res.ok){ statusEl.textContent=data.error||('Ошибка '+res.status); statusEl.classList.add('error'); return; }
+			renderItems(data.items||[]);
+		} catch(e){ statusEl.textContent='Сеть: '+e.message; statusEl.classList.add('error'); }
+	}
+
+	form.addEventListener('submit', async (e)=>{
+		e.preventDefault();
+		const orgType = typeInput.value.trim();
+		if(!orgType){ statusEl.textContent='Укажите тип'; statusEl.classList.add('error'); return; }
+		const params = await getUserParamNames();
+		const body = { organization_type: orgType, params };
+		const thrRaw = thrInput.value.trim(); if(thrRaw){ const thr=parseFloat(thrRaw); if(!isNaN(thr)) body.threshold=thr; }
+		performSearch(body);
+	});
+})();
+</script>
+<script>
+// ВОССТАНОВЛЕНО: управление старым bottom-sheet (feedback) с null-safe проверками
+(() => {
+	const sheet = document.getElementById('feedback-sheet');
+	const overlay = document.getElementById('sheet-overlay');
+	const openBtn = document.getElementById('open-feedback');
+	const closeBtn = document.getElementById('close-sheet');
+	const cancelBtn = document.getElementById('cancel-feedback');
+	const tellMore = document.getElementById('tell-more');
+	const tellLess = document.getElementById('tell-less');
+	const more = document.getElementById('more');
+	const submitBtn = document.getElementById('submit-feedback');
+	const commentInput = document.getElementById('comment');
+	const ratingButtons = document.querySelectorAll('.rate');
+	let currentRating = null;
+
+	function openSheet(){ if(!sheet||!overlay) return; sheet.classList.add('open'); overlay.classList.add('visible'); overlay.removeAttribute('aria-hidden'); document.body.classList.add('noscroll'); }
+	function closeSheet(){ if(!sheet||!overlay) return; sheet.classList.remove('open'); overlay.classList.remove('visible'); overlay.setAttribute('aria-hidden','true'); document.body.classList.remove('noscroll'); }
+
+	openBtn?.addEventListener('click', openSheet);
+	overlay?.addEventListener('click', closeSheet);
+	closeBtn?.addEventListener('click', closeSheet);
+	cancelBtn?.addEventListener('click', closeSheet);
+
+	tellMore?.addEventListener('click', () => { if(!more||!tellMore) return; more.classList.add('expanded'); more.setAttribute('aria-hidden','false'); tellMore.style.display='none'; });
+	tellLess?.addEventListener('click', () => { if(!more||!tellMore) return; more.classList.remove('expanded'); more.setAttribute('aria-hidden','true'); tellMore.style.display='inline-block'; });
+
+	ratingButtons.forEach(btn => {
+		btn.addEventListener('click', () => {
+			ratingButtons.forEach(b => b.classList.remove('selected'));
+			btn.classList.add('selected');
+			currentRating = btn.dataset.value;
+		});
+	});
+
+	submitBtn?.addEventListener('click', () => {
+		console.log('Submit rating:', currentRating, 'comment:', commentInput?.value);
+		closeSheet();
+	});
+
+	document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && sheet?.classList.contains('open')) closeSheet(); });
+})();
+</script>
+</body>
+</html>
