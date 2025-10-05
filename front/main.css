@@ -485,6 +485,22 @@ label {
   .auth-btn { padding:8px 14px 8px 16px; font-size:13px; }
 }
 
+/* User profile & params */
+.profile-panel { margin-top:4px; border-top:1px solid var(--gray--10); padding-top:14px; display:none; flex-direction:column; gap:14px; }
+.profile-panel.visible { display:flex; }
+.profile-info { display:flex; flex-direction:column; gap:4px; font-size:0.8rem; color:var(--brand--dark); }
+.prof-line { margin:0; }
+.params-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:8px 14px; border:none; padding:0; margin:0; }
+.param-item { display:flex; align-items:center; gap:6px; font-size:0.7rem; background:var(--gray--5); padding:6px 10px; border-radius:12px; cursor:pointer; user-select:none; }
+.param-item input { margin:0; accent-color: var(--brand--brand); width:16px; height:16px; }
+.param-item:hover { background:var(--gray--10); }
+.params-actions { display:flex; align-items:center; gap:10px; }
+.params-actions .button.small { font-size:0.65rem; padding:6px 10px; }
+.params-status { font-size:0.65rem; min-height:1em; color:var(--brand--dark); }
+.params-status.saving { color:var(--gray--70); }
+.params-status.error { color:var(--danger--medium); }
+.params-status.ok { color:var(--brand--brand); }
+
 /* Overlay */
 .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.25); opacity:0; visibility:hidden; transition:opacity .25s; z-index:15; }
 .overlay.visible { opacity:1; visibility:visible; }

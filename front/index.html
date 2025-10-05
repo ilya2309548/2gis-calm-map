@@ -296,6 +296,34 @@
 		<div class="auth-dialog__footer">
 			<button id="auth-logout" class="button attention-tertia ghost" style="display:none;">Выйти</button>
 		</div>
+		<!-- Профиль и пользовательские параметры -->
+		<div id="user-profile" class="profile-panel" aria-hidden="true">
+			<div class="profile-info">
+				<p class="prof-line"><strong id="prof-name">—</strong></p>
+				<p class="prof-line" id="prof-email">—</p>
+				<p class="prof-line small" id="prof-role">—</p>
+			</div>
+			<form id="user-params-form" novalidate>
+				<fieldset class="params-grid">
+					<legend class="visually-hidden">Параметры восприятия</legend>
+					<label class="param-item"><input type="checkbox" name="appearance"> <span>Внешний вид</span></label>
+					<label class="param-item"><input type="checkbox" name="lighting"> <span>Освещение</span></label>
+					<label class="param-item"><input type="checkbox" name="smell"> <span>Запах</span></label>
+					<label class="param-item"><input type="checkbox" name="temperature"> <span>Температура</span></label>
+					<label class="param-item"><input type="checkbox" name="tactility"> <span>Тактильность</span></label>
+					<label class="param-item"><input type="checkbox" name="signage"> <span>Указатели и инструкции</span></label>
+					<label class="param-item"><input type="checkbox" name="intuitiveness"> <span>Интуитивность</span></label>
+					<label class="param-item"><input type="checkbox" name="staff_attitude"> <span>Отношение персонала</span></label>
+					<label class="param-item"><input type="checkbox" name="people_density"> <span>Количество людей</span></label>
+					<label class="param-item"><input type="checkbox" name="self_service"> <span>Самообслуживание</span></label>
+					<label class="param-item"><input type="checkbox" name="calmness"> <span>Спокойное место</span></label>
+				</fieldset>
+				<div class="params-actions">
+					<button type="button" id="save-user-params" class="button attention-prima small">Сохранить</button>
+					<span id="user-params-status" class="params-status" aria-live="polite"></span>
+				</div>
+			</form>
+		</div>
 	</div>
 </body>
 </html>
