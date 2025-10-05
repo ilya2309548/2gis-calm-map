@@ -241,6 +241,9 @@ definitions:
       longitude:
         description: optional
         type: number
+      map_path:
+        description: относительный путь к карте (изображение)
+        type: string
       organization_type:
         type: string
       owner_id:
@@ -248,6 +251,9 @@ definitions:
         type: integer
       params:
         $ref: '#/definitions/model.OrganizationParams'
+      picture_path:
+        description: относительный путь к общей картинке
+        type: string
     type: object
   model.OrganizationComment:
     properties:
@@ -653,6 +659,165 @@ paths:
       summary: List comments for organization
       tags:
       - organization-comments
+  /organization/{organization_id}/image/{kind}:
+    get:
+      description: Возвращает файл изображения по типу (map | picture).
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: integer
+      - description: Kind (map|picture)
+        in: path
+        name: kind
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get organization image (map or picture)
+      tags:
+      - organization-media
+  /organization/{organization_id}/map/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загрузка файла карты организации (png/jpg/jpeg/webp/gif). Требует
+        роль owner/admin.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: integer
+      - description: Image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload organization map image
+      tags:
+      - organization-media
+  /organization/{organization_id}/picture/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загрузка основной картинки организации. Требует роль owner/admin.
+      parameters:
+      - description: Organization ID
+        in: path
+        name: organization_id
+        required: true
+        type: integer
+      - description: Image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload organization picture image
+      tags:
+      - organization-media
   /organization/comment:
     post:
       consumes:

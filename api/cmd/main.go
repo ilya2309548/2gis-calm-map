@@ -76,6 +76,9 @@ func main() {
 	r.POST("/organization/params/average/by-type", middleware.JWTAuth(), handler.GetOrganizationsParamsAverageByType)
 	r.POST("/organization/comment", middleware.JWTAuth(), handler.CreateOrganizationComment)
 	r.GET("/organization/:organization_id/comments", middleware.JWTAuth(), handler.GetOrganizationComments)
+	r.POST("/organization/:organization_id/map/upload", middleware.JWTAuth(), handler.UploadOrganizationMap)
+	r.POST("/organization/:organization_id/picture/upload", middleware.JWTAuth(), handler.UploadOrganizationPicture)
+	r.GET("/organization/:organization_id/image/:kind", middleware.JWTAuth(), handler.GetOrganizationImageHandler)
 
 	log.Println("start at :8080")
 	if err := r.Run(":8080"); err != nil {

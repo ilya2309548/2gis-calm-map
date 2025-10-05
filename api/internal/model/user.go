@@ -18,6 +18,8 @@ type Organization struct {
 	Latitude         *float64            `json:"latitude"`  // optional
 	OrganizationType string              `json:"organization_type"`
 	Params           *OrganizationParams `json:"params,omitempty" gorm:"foreignKey:OrganizationID;references:ID"`
+	MapPath          *string             `json:"map_path"`     // относительный путь к карте (изображение)
+	PicturePath      *string             `json:"picture_path"` // относительный путь к общей картинке
 }
 
 // OrganizationParams aggregates ratings for an organization (1:1)
