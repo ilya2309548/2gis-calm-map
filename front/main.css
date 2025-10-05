@@ -1,29 +1,59 @@
 @import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
 
 :root {
-/* || цвета */
---color-persimmon: rgba(199, 86, 51, 1);
---color-burn: rgba(157, 88, 59, 1);
---color-cedar: rgba(105, 45, 27, 1);
---color-nettle: rgb(163, 185, 171);
---color-mint: rgba(79, 118, 94, 1);
---color-moss: rgb(76, 97, 84);
---color-pine: rgba(68, 87, 75, 1);
---color-abyss: rgba(47, 60, 57, 1);
---color-bergamot: rgba(32, 44, 41, 1);
---color-pits: rgba(17, 21, 18, 1);
---color-forecast: rgba(100, 99, 99, 1);
---color-slush: rgba(136, 136, 136, 1);
---color-cotton: rgba(217, 217, 217, 1);
---color-raspberry: rgba(200, 59, 152, 1);
---color-milkshake: rgba(225, 159, 159, 1);
+/* Color styles */
+--main--dark: rgba(45, 9, 53, 1);
+--main--light: rgba(246, 250, 251, 1);
+--brand--brand: rgba(83, 126, 112, 1);
+--brand--dark: rgba(48, 69, 62, 1);
+--brand--light: rgba(133, 160, 152, 1);
+--brand--comp1: rgba(27, 152, 205, 1);
+--brand--comp2: rgba(210, 52, 86, 1);
+--gray--90: rgba(68, 32, 77, 1);
+--gray--70: rgba(108, 80, 116, 1);
+--gray--50: rgba(147, 129, 154, 1);
+--gray--30: rgba(187, 177, 193, 1);
+--gray--20: rgba(206, 202, 212, 1);
+--gray--10: rgba(226, 226, 232, 1);
+--gray--5: rgba(236, 238, 241, 1);
+--danger--light: rgba(243, 204, 204, 1);
+--danger--medium: rgba(235, 32, 35, 1);
+--danger--dark: rgba(148, 15, 17, 1);
+--warning--medium: rgba(255, 227, 28, 1);
+--warning--light: rgba(246, 239, 185, 1);
+--warning--dark: rgba(156, 138, 12, 1);
+--success--dark: rgba(43, 130, 35, 1);
+--success--medium: rgba(67, 208, 55, 1);
+--success--light: rgba(192, 236, 188, 1);
+--link--active: rgba(20, 17, 86, 1);
+--link--link: rgba(0, 0, 0, 0.5);
+--link--hover: rgba(45, 39, 169, 1);
+--link--visited: rgba(110, 35, 138, 1);
+--rating--discomfort: rgba(219, 81, 109, 1);
+--rating--neutral: rgba(222, 208, 87, 1);
+--rating--comfort: rgba(85, 208, 99, 1);
+--rating--light-discomfort: rgba(237, 187, 197, 1);
+--rating--dark-comfort: rgba(67, 158, 77, 1);
+--rating--dark-discomfort: rgba(162, 73, 91, 1);
+--rating--dark-neutral: rgba(169, 159, 75, 1);
+--rating--light-comfort: rgba(174, 231, 180, 1);
+--rating--light-neutral: rgba(239, 232, 178, 1);
+--rating--25: rgba(221, 146, 98, 1);
+--rating--75: rgba(154, 208, 93, 1);
 
-/* || размеры текста */
---font-size-h1: 40px;
---font-size-h2: 35px;
---font-size-h3: 30px;
---font-size-h4: 1.3em;
---font-size-paragraph: 1em;
+/* Text-size styles */
+--caption: 12px;
+--title--h1: 4em;
+--title--h2: 3em;
+--title--h3: 2em;
+--body--large: 3em;
+--body--medium: 2em;
+--body--small: 1em;
+--body--medium-light: 16px;
+--body--medium-bold: 16px;
+--link--large: 20px;
+--link--medium: 16px;
+--link--small: 12px;
 
 /* || размеры паддингов */
 --padding-tag-v: calc(var(--font-size-paragraph)/3);
@@ -56,44 +86,48 @@ a:not(.button,.tag,.cat):hover {
   font-weight: 400;
 }
 h1 {
-  font-size: var(--font-size-h1);
+  font-size: var(--title--h1);
   /*font-style: italic;*/
   font-weight: 400;
   color: var(--color-cotton);
   text-align: center;
 }/*замена*/
-h1 {
-  font-size: var(--font-size-h1);
-  font-weight: 700;
-  color:var(--color-cotton);
-}
 h2 {
   font-size: var(--font-size-h2);
   font-weight: 400;
   color:var(--color-cotton);
 }
 h3 {
-  font-size: var(--font-size-h3);
+  font-size: var(--title--h3);
   font-weight: 400;
   color:var(--color-cotton);
 }
-h4 {
-  font-size: var(--font-size-h4);
-  font-weight: 400;
-  color:var(--color-cotton);
-  text-align: center;
-}
+
 p {
-  font-size: var(--font-size-paragraph);
+  font-size: var(--body--medium);
   font-weight: 400;
   color:var(--color-cotton);
 }
+
 .button {
-  font-size: var(--font-size-paragraph);
+  font-size: var(--body--large);
   font-weight: 400;
-  text-transform: uppercase;
   text-decoration: none;
 }
+
+.large {
+  font-size: var(--body--large);
+}
+
+.medium {
+  font-size: var(--body--medium);
+}
+
+.small {
+  font-size: var(--body--small);
+}
+
+
 
 
 
@@ -1164,3 +1198,17 @@ label {
   display: block;
 }
 
+
+
+.parent {
+    width: 400px;
+    height:80px;
+    overflow: hidden;
+    overflow-x: scroll;
+    white-space:nowrap;
+}
+
+.child {
+    display: inline-block;
+    vertical-align: top;
+}
