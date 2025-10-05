@@ -83,6 +83,113 @@
 					icon: undefined,
 				});
 			}
+			// ====== Работа с организациями по адресу ======
+			const ORG_API = 'http://81.29.146.35:8080';
+			const ALL_PARAMS = ['appearance','lighting','smell','temperature','tactility','signage','intuitiveness','staff_attitude','people_density','self_service','calmness'];
+			function getToken(){ try { return localStorage.getItem('auth_token'); } catch { return null; } }
+			function decodeJWT(token){
+				try { const p = token.split('.')[1]; return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))); } catch { return null; }
+			}
+			async function fetchJSON(url, opts){
+				const res = await fetch(url, opts);
+				let data = null; try { data = await res.json(); } catch { data = {}; }
+				return { ok: res.ok, status: res.status, data };
+			}
+			async function getUserParamNames(){
+				const token = getToken(); if(!token) return ALL_PARAMS; // не авторизован — все
+				const dec = decodeJWT(token); if(!dec || !dec.user_id) return ALL_PARAMS;
+				try {
+					const { ok, data } = await fetchJSON(`${ORG_API}/user-params/${dec.user_id}`, { headers:{ Authorization:'Bearer '+token }});
+					if (!ok) return ALL_PARAMS;
+					const selected = ALL_PARAMS.filter(k => data[k] === true);
+					return selected.length ? selected : ALL_PARAMS; // если ничего не отмечено — все
+				} catch { return ALL_PARAMS; }
+			}
+			function renderExistingOrg(orgInfo, avgInfo){
+				openOrgInfoDialog(orgInfo, avgInfo);
+			}
+			function hideExistingOrg(){ /* modal approach, no inline cleanup needed */ }
+			// ЯВНЫЙ ШАГ: получение организации по адресу (для получения её ID)
+			async function fetchOrganizationByAddress(address){
+				const normalized = (address||'').trim();
+				if (!normalized) return { ok:false, status:400, data:{ error:'empty address'} };
+				return await fetchJSON(`${ORG_API}/organization/public/by-address`, {
+					method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ address: normalized })
+				});
+			}
+			function buildOrgInfoHTML(org, avg){
+				// Сервер возвращает поля: id, address, organization_type, map_path, picture_path
+				const p = (avg?.Params||[]).map(x=>`<code>${x}</code>`).join(' ');
+				const average = avg?.Average != null ? Number(avg.Average).toFixed(2) : '—';
+				const mapImg = org.map_path ? `<div class="img-box"><img src="${ORG_API}/organization/${org.id}/image/map" alt="Карта" loading="lazy"></div>` : '';
+				const picImg = org.picture_path ? `<div class="img-box"><img src="${ORG_API}/organization/${org.id}/image/picture" alt="Фото" loading="lazy"></div>` : '';
+				return `
+					<div class="org-info-meta">
+						<div class="lbl">Адрес:</div><div>${org.address||'-'}</div>
+						<div class="lbl">Тип:</div><div>${org.organization_type||'-'}</div>
+						<div class="lbl">ID:</div><div>${org.id}</div>
+					</div>
+					<div class="org-info-images">${mapImg}${picImg}</div>
+					<div class="org-info-average">Среднее: <span class="val">${average}</span></div>
+					<div class="org-info-params">Параметры: ${p}</div>
+				`;
+			}
+			function openOrgInfoDialog(org, avg){
+				const dialog = document.getElementById('org-info-dialog');
+				const overlay = document.getElementById('org-info-overlay');
+				const body = document.getElementById('org-info-body');
+				if (!dialog || !overlay || !body) return;
+				body.innerHTML = buildOrgInfoHTML(org, avg);
+				dialog.classList.add('open');
+				dialog.removeAttribute('aria-hidden');
+				overlay.classList.add('visible');
+				overlay.removeAttribute('aria-hidden');
+			}
+			function closeOrgInfoDialog(){
+				const dialog = document.getElementById('org-info-dialog');
+				const overlay = document.getElementById('org-info-overlay');
+				if (!dialog || !overlay) return;
+				dialog.classList.remove('open');
+				dialog.setAttribute('aria-hidden','true');
+				overlay.classList.remove('visible');
+				overlay.setAttribute('aria-hidden','true');
+			}
+			document.addEventListener('click', (e)=>{
+				if (e.target && (e.target.id === 'org-info-close' || e.target.id === 'org-info-ok' || e.target.id === 'org-info-overlay')) closeOrgInfoDialog();
+			});
+			document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeOrgInfoDialog(); });
+			let lastOrgLookupSeq = 0;
+			async function checkExistingOrganization(address){
+				const seq = ++lastOrgLookupSeq;
+				const createBtn = document.getElementById('open-org-dialog');
+				if (createBtn) createBtn.disabled = true;
+				try {
+					// STEP 1: получить организацию (ID) по адресу
+					const lookup = await fetchOrganizationByAddress(address);
+					if (seq !== lastOrgLookupSeq) return false; // устаревший ответ
+					if (!lookup.ok) {
+						if (lookup.status === 404) { // нет организации — можно создавать
+							if (createBtn) createBtn.disabled = false;
+							return false;
+						}
+						return false;
+					}
+					// STEP 2: получить список параметров (фильтр по пользователю)
+					const paramNames = await getUserParamNames();
+					// STEP 3: запрос среднего для найденной организации
+					const orgId = lookup.data.id; // правильное имя поля из JSON
+					if (orgId == null) { console.warn('Не удалось получить id организации из ответа', lookup.data); if (createBtn) createBtn.disabled = false; return false; }
+					const avgReq = { organization_id: orgId, params: paramNames };
+					const avg = await fetchJSON(`${ORG_API}/organization/params/average/with-info`, {
+						method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(avgReq)
+					});
+					if (avg.ok) renderExistingOrg(lookup.data, avg.data); else renderExistingOrg(lookup.data, { Average: null, Params: paramNames });
+					return true;
+				} catch(e){
+					if (createBtn) createBtn.disabled = false;
+					return false;
+				}
+			}
 			function initMap() {
 				if (!window.MAPGL_KEY || window.MAPGL_KEY.startsWith('PASTE_')) {
 					console.warn('MapGL key не задан. Установите window.MAPGL_KEY.');
@@ -108,8 +215,10 @@
 						const top = best[0];
 						const addr = formatAddress(top.full_name || top.address_name || top.name || 'Неизвестный объект');
 						setAddress(addr);
-						// Авто-открытие окна организации (если включено)
-						if (window.AUTO_OPEN_ORG_DIALOG && typeof window.openOrganizationDialog === 'function') {
+						// Проверяем существование организации
+						const exists = await checkExistingOrganization(addr);
+						// Авто-открытие создания только если не существует и включено
+						if (!exists && window.AUTO_OPEN_ORG_DIALOG && typeof window.openOrganizationDialog === 'function') {
 							setTimeout(()=>{ try { window.openOrganizationDialog(); } catch(e){ console.warn('openOrganizationDialog failed', e); } }, 50);
 						}
 					});
@@ -158,6 +267,7 @@
 			<div class="address-line" style="flex-direction:column; gap:10px;">
 				<span id="selected-address" class="address-pill">Выберите точку на карте</span>
 				<button id="open-org-dialog" class="button attention-prima small" disabled style="align-self:center;">Создать организацию</button>
+				<div id="org-existing-info" class="org-existing hidden"></div>
 			</div>
 			<section class="block">
 				<p class="section-title">Выберите категорию</p>
@@ -258,6 +368,21 @@
 				<button type="submit" class="button attention-prima" id="org-submit">Создать</button>
 			</div>
 		</form>
+	</div>
+
+	<!-- Dialog информации об организации (read-only) -->
+	<div id="org-info-overlay" class="overlay" aria-hidden="true"></div>
+	<div id="org-info-dialog" class="org-dialog org-dialog--info" role="dialog" aria-modal="true" aria-labelledby="org-info-title" aria-hidden="true">
+		<div class="org-dialog__header">
+			<h2 id="org-info-title">Организация</h2>
+			<button class="icon-close" id="org-info-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
+		</div>
+		<div class="org-info-body" id="org-info-body">
+			<p class="small">Загрузка...</p>
+		</div>
+		<div class="org-dialog__footer">
+			<button type="button" class="button attention-tertia ghost" id="org-info-ok">Закрыть</button>
+		</div>
 	</div>
 
 	<!-- Оверлей и модальное окно авторизации -->
