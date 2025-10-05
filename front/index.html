@@ -91,9 +91,23 @@
 				try { const p = token.split('.')[1]; return JSON.parse(atob(p.replace(/-/g,'+').replace(/_/g,'/'))); } catch { return null; }
 			}
 			async function fetchJSON(url, opts){
-				const res = await fetch(url, opts);
-				let data = null; try { data = await res.json(); } catch { data = {}; }
-				return { ok: res.ok, status: res.status, data };
+				try {
+					const res = await fetch(url, opts);
+					let data = null; try { data = await res.json(); } catch { data = {}; }
+					return { ok: res.ok, status: res.status, data };
+				} catch(e){
+					return { ok:false, status:0, data:{ error:'Network error', detail: e.message } };
+				}
+			}
+			function diagnoseNetworkError(errObj, endpoint){
+				if(!errObj || errObj.status !== 0) return '';
+				let hints = [];
+				hints.push('Не удалось установить соединение с '+endpoint);
+				if(!navigator.onLine) hints.push('Похоже, нет сети (navigator.offLine)');
+				if(location.protocol === 'file:') hints.push('Страница открыта как file:// — браузер может блокировать CORS');
+				if(location.hostname === 'localhost' || location.hostname === '127.0.0.1') hints.push('Проверь, запущен ли backend на :8080 и нет ли firewall');
+				hints.push('Проверь консоль Network в DevTools (запрос мог быть отклонен CORS)');
+				return hints.join('\n');
 			}
 			async function getUserParamNames(){
 				const token = getToken(); if(!token) return ALL_PARAMS; // не авторизован — все
@@ -212,30 +226,55 @@
 								sendBtn.disabled = true; status.textContent='Отправка...'; status.className='oqc-status saving';
 								try {
 									const payload = { organization_id: orgId, text };
-									const res = await fetch(`${ORG_API}/organization/comment`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body: JSON.stringify(payload) });
-									if(!res.ok){ const js = await res.json().catch(()=>({})); status.textContent = js.error||'Ошибка'; status.className='oqc-status error'; sendBtn.disabled=false; return; }
+									let res;
+									try { res = await fetch(`${ORG_API}/organization/comment`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body: JSON.stringify(payload) }); }
+									catch(netErr){
+										console.error('Quick comment network error', netErr);
+										status.textContent='Сеть: не удалось отправить'; status.className='oqc-status error';
+										const diag = diagnoseNetworkError({ status:0 }, '/organization/comment');
+										if(diag) console.warn(diag);
+										sendBtn.disabled=false; return;
+									}
+									if(!res.ok){ const js = await res.json().catch(()=>({})); status.textContent = js.error||`Ошибка ${res.status}`; status.className='oqc-status error'; sendBtn.disabled=false; return; }
 									status.textContent='Отправлено'; status.className='oqc-status ok'; input.value='';
 									// перезагрузить комментарии
 									loadOrganizationComments(orgId);
-								} catch(e){ status.textContent='Ошибка сети'; status.className='oqc-status error'; sendBtn.disabled=false; }
+								} catch(e){ status.textContent='Ошибка'; status.className='oqc-status error'; console.error('Quick comment unexpected', e); sendBtn.disabled=false; }
 							};
 							if(detBtn){ detBtn.onclick = ()=> openDetailedDialog(orgId); }
 						}
 						// ===== Детальная форма =====
+						let lastFocusBeforeDetail = null;
 						function openDetailedDialog(orgId){
 							const dlg = document.getElementById('detail-dialog');
 							const ov = document.getElementById('detail-overlay');
 							if(!dlg||!ov) return;
+							lastFocusBeforeDetail = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 							document.getElementById('detail-org-id').value = orgId;
 							dlg.classList.add('open'); dlg.removeAttribute('aria-hidden');
 							ov.classList.add('visible'); ov.removeAttribute('aria-hidden');
+							// Фокус ставим на textarea общего отзыва для доступности
+							const focusTarget = document.getElementById('detail-text');
+							if(focusTarget) setTimeout(()=>focusTarget.focus(), 30);
 						}
 						function closeDetailedDialog(){
 							const dlg = document.getElementById('detail-dialog');
 							const ov = document.getElementById('detail-overlay');
 							if(!dlg||!ov) return;
-							dlg.classList.remove('open'); dlg.setAttribute('aria-hidden','true');
+							// Если фокус внутри диалога — убираем перед aria-hidden
+							const active = document.activeElement;
+							if(active && dlg.contains(active)) { try { active.blur(); } catch{} }
+							dlg.classList.remove('open');
+							// Отложенно проставляем aria-hidden после потери фокуса
+							setTimeout(()=>{ dlg.setAttribute('aria-hidden','true'); }, 0);
 							ov.classList.remove('visible'); ov.setAttribute('aria-hidden','true');
+							// Восстановление фокуса
+							if(lastFocusBeforeDetail && document.contains(lastFocusBeforeDetail)) {
+								try { lastFocusBeforeDetail.focus(); } catch{}
+							} else {
+								const fallback = document.getElementById('open-detailed-comment') || document.getElementById('auth-btn');
+								if(fallback) try { fallback.focus(); } catch{}
+							}
 						}
 						document.addEventListener('click',(e)=>{
 							if(e.target && (e.target.id==='detail-close' || e.target.id==='detail-cancel' || e.target.id==='detail-overlay')) closeDetailedDialog();
@@ -255,19 +294,87 @@
 								const keys = ['appearance','lighting','smell','temperature','tactility','signage','intuitiveness','staff_attitude','people_density','self_service','calmness'];
 								for(const k of keys){
 									const v = fd.get(k+'_value');
-									const c = fd.get(k+'_comment');
 									if(v){ payload[k+'_value'] = Number(v); }
-									if(c && c.toString().trim()) payload[k+'_comment'] = c.toString().trim();
+								}
+								console.debug('Submitting detailed comment payload', payload);
+								if(!payload.text && Object.keys(payload).length === 1){
+									statusEl.textContent='Добавьте текст или хоть одну оценку';
+									statusEl.className='detail-status error';
+									return;
 								}
 								try {
-									const res = await fetch(`${ORG_API}/organization/comment`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body: JSON.stringify(payload) });
-									if(!res.ok){ const js = await res.json().catch(()=>({})); statusEl.textContent = js.error||'Ошибка'; statusEl.className='detail-status error'; return; }
+									let res;
+									try { res = await fetch(`${ORG_API}/organization/comment`, { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer '+token }, body: JSON.stringify(payload) }); }
+									catch(netErr){
+										console.error('Detailed comment network error', netErr);
+										statusEl.textContent='Сеть: не удалось подключиться'; statusEl.className='detail-status error';
+										const diag = diagnoseNetworkError({ status:0 }, '/organization/comment');
+										if(diag) console.warn(diag);
+										return;
+									}
+									if(!res.ok){ const js = await res.json().catch(()=>({})); statusEl.textContent = js.error||`Ошибка ${res.status}`; statusEl.className='detail-status error'; return; }
 									statusEl.textContent='Готово'; statusEl.className='detail-status ok';
 									loadOrganizationComments(payload.organization_id);
-									setTimeout(()=>{ closeDetailedDialog(); }, 500);
-								} catch(err){ statusEl.textContent='Сеть: '+err.message; statusEl.className='detail-status error'; }
+									setTimeout(()=>{ closeDetailedDialog(); }, 600);
+								} catch(err){ statusEl.textContent='Ошибка: '+err.message; statusEl.className='detail-status error'; console.error('Detailed comment unexpected', err); }
 							}
 						});
+						// Инициализация смайликов для детальной формы
+						const EMOJI_MAP = [
+							{val:1, img:'img/icons/emoji-sad.png', alt:'1'},
+							{val:2, img:'img/icons/emoji-think-left.png', alt:'2'},
+							{val:3, img:'img/icons/emoji-quite.png', alt:'3'},
+							{val:4, img:'img/icons/emoji-think-right.png', alt:'4'},
+							{val:5, img:'img/icons/emoji.png', alt:'5'}
+						];
+						function updateDetailSubmitState(){
+							const form = document.getElementById('detail-form'); if(!form) return;
+							const submitBtn = document.getElementById('detail-submit'); if(!submitBtn) return;
+							const textVal = (document.getElementById('detail-text')?.value||'').trim();
+							const keys = ['appearance','lighting','smell','temperature','tactility','signage','intuitiveness','staff_attitude','people_density','self_service','calmness'];
+							let any=false;
+							for(const k of keys){ const hv=form.querySelector(`input[name='${k}_value']`); if(hv && hv.value){ any=true; break; } }
+							submitBtn.disabled = !(any || textVal);
+						}
+						function initDetailEmojis(){
+							const containers = document.querySelectorAll('.crit-emojis');
+							containers.forEach(c=>{
+								// Если уже заполнено (повторное открытие) — пропускаем
+								if(c.children && c.children.length) return;
+								const param = c.dataset.param;
+								c.innerHTML = EMOJI_MAP.map(e=>`<button type="button" class="emoji-rate" data-param="${param}" data-value="${e.val}" title="${e.alt}"><img src="${e.img}" alt="${e.alt}"/></button>`).join('');
+							});
+							updateDetailSubmitState();
+						}
+						document.addEventListener('click',(e)=>{
+							const btn = e.target.closest && e.target.closest('.emoji-rate');
+							if(!btn) return;
+							const param = btn.dataset.param; const val = btn.dataset.value;
+							const group = document.querySelectorAll(`.emoji-rate[data-param='${param}']`);
+							const hidden = document.querySelector(`input[name='${param}_value']`);
+							const alreadySelected = btn.classList.contains('selected');
+							group.forEach(b=> b.classList.remove('selected'));
+							if(alreadySelected){
+								if(hidden) hidden.value='';
+							}else{
+								btn.classList.add('selected');
+								if(hidden) hidden.value = val;
+							}
+							updateDetailSubmitState();
+						});
+						// Инициализируем смайлики только после полной загрузки DOM или при первом открытии окна
+						if(document.readyState === 'complete' || document.readyState === 'interactive'){
+							/* пусто: теперь вызов при открытии */
+						}else{
+							document.addEventListener('DOMContentLoaded', ()=>{/* ленивый */});
+						}
+						// Переопределяем openDetailedDialog чтобы вставлять смайлы при открытии
+						const _origOpenDetailedDialog = openDetailedDialog;
+						openDetailedDialog = function(orgId){
+							_origOpenDetailedDialog(orgId);
+							initDetailEmojis();
+							updateDetailSubmitState();
+						};
 			document.addEventListener('click', (e)=>{
 				if (e.target && (e.target.id === 'org-info-close' || e.target.id === 'org-info-ok' || e.target.id === 'org-info-overlay')) closeOrgInfoDialog();
 			});
@@ -523,61 +630,61 @@
 			<textarea id="detail-text" name="text" rows="3" placeholder="Общее впечатление"></textarea>
 		</div>
 		<div class="detail-grid" id="detail-grid">
-			<!-- параметры: value (1-5) + comment -->
+			<!-- параметры: выбор смайликов 1-5 -->
 			<div class="crit" data-key="appearance">
 				<label>Appearance</label>
-				<select name="appearance_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="appearance_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="appearance"></div>
+				<input type="hidden" name="appearance_value" />
 			</div>
 			<div class="crit" data-key="lighting">
 				<label>Lighting</label>
-				<select name="lighting_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="lighting_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="lighting"></div>
+				<input type="hidden" name="lighting_value" />
 			</div>
 			<div class="crit" data-key="smell">
 				<label>Smell</label>
-				<select name="smell_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="smell_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="smell"></div>
+				<input type="hidden" name="smell_value" />
 			</div>
 			<div class="crit" data-key="temperature">
 				<label>Temperature</label>
-				<select name="temperature_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="temperature_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="temperature"></div>
+				<input type="hidden" name="temperature_value" />
 			</div>
 			<div class="crit" data-key="tactility">
 				<label>Tactility</label>
-				<select name="tactility_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="tactility_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="tactility"></div>
+				<input type="hidden" name="tactility_value" />
 			</div>
 			<div class="crit" data-key="signage">
 				<label>Signage</label>
-				<select name="signage_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="signage_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="signage"></div>
+				<input type="hidden" name="signage_value" />
 			</div>
 			<div class="crit" data-key="intuitiveness">
 				<label>Intuitiveness</label>
-				<select name="intuitiveness_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="intuitiveness_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="intuitiveness"></div>
+				<input type="hidden" name="intuitiveness_value" />
 			</div>
 			<div class="crit" data-key="staff_attitude">
 				<label>StaffAttitude</label>
-				<select name="staff_attitude_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="staff_attitude_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="staff_attitude"></div>
+				<input type="hidden" name="staff_attitude_value" />
 			</div>
 			<div class="crit" data-key="people_density">
 				<label>PeopleDensity</label>
-				<select name="people_density_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="people_density_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="people_density"></div>
+				<input type="hidden" name="people_density_value" />
 			</div>
 			<div class="crit" data-key="self_service">
 				<label>SelfService</label>
-				<select name="self_service_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="self_service_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="self_service"></div>
+				<input type="hidden" name="self_service_value" />
 			</div>
 			<div class="crit" data-key="calmness">
 				<label>Calmness</label>
-				<select name="calmness_value" class="crit-val"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
-				<textarea name="calmness_comment" rows="2" placeholder="Комментарий"></textarea>
+				<div class="crit-emojis" data-param="calmness"></div>
+				<input type="hidden" name="calmness_value" />
 			</div>
 		</div>
 		<div class="detail-footer">

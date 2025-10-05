@@ -635,8 +635,13 @@ body.noscroll { overflow:hidden; }
 .detail-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:14px; max-height:360px; overflow:auto; padding-right:4px; }
 .crit { display:flex; flex-direction:column; gap:6px; background:var(--gray--5); border:1px solid var(--gray--10); border-radius:14px; padding:10px 12px; }
 .crit label { font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--brand--dark); margin:0; }
-.crit select { border:1px solid var(--gray--30); border-radius:10px; padding:6px 8px; font-size:0.65rem; background:#fff; }
-.crit textarea { border:1px solid var(--gray--20); border-radius:10px; padding:6px 8px; font-size:0.65rem; resize:vertical; font-family:inherit; }
+.crit select { display:none; }
+.crit textarea { display:none; }
+.crit-emojis { display:flex; gap:6px; flex-wrap:wrap; }
+.emoji-rate { background:#fff; border:2px solid var(--gray--20); border-radius:12px; padding:4px 6px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.2s; }
+.emoji-rate img { width:28px; height:28px; display:block; }
+.emoji-rate:hover { border-color:var(--brand--brand); background:var(--gray--10); }
+.emoji-rate.selected { border-color:var(--brand--brand); box-shadow:0 0 0 3px rgba(83,126,112,.35); background:#fff; }
 .detail-footer { display:flex; justify-content:space-between; align-items:center; gap:14px; }
 .detail-actions { display:flex; gap:10px; }
 .detail-status { font-size:0.65rem; min-height:1em; }
