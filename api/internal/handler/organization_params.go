@@ -23,11 +23,10 @@ type OrganizationParamsAverageResponse struct {
 
 // GetOrganizationParamsAverage godoc
 // @Summary Compute average across selected organization params
-// @Description Returns (avg(param1)+...)/N for specified params. Requires JWT (admin/owner of org).
+// @Description Returns (avg(param1)+...)/N for specified params. Public access (без проверки роли).
 // @Tags organization-params
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param input body OrganizationParamsAverageRequest true "Organization params average request"
 // @Success 200 {object} OrganizationParamsAverageResponse
 // @Failure 400 {object} map[string]string
@@ -42,12 +41,7 @@ func GetOrganizationParamsAverage(c *gin.Context) {
 		return
 	}
 
-	// Простая проверка роли (из JWT middleware)
-	roleValue, _ := c.Get("role")
-	if roleValue != "admin" && roleValue != "owner" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-		return
-	}
+	// публично: не фильтруем по ролям
 
 	paramsModel, err := orgParamsService.GetOrCreate(req.OrganizationID)
 	if err != nil {

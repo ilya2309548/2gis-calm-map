@@ -87,23 +87,21 @@ func CreateOrganization(c *gin.Context) {
 }
 
 // GetOrganization godoc
-// @Summary Get organization (owner self)
-// @Description Get organization for current user (admin can also fetch for self only here)
+// @Summary Get organization of authenticated owner OR (public) first organization of that owner
+// @Description Публичный доступ: возвращает организацию текущего владельца (если авторизован) или 404 если нет. (Упростили доступ — без ограничения ролей)
 // @Tags organization
 // @Produce json
-// @Security BearerAuth
 // @Success 200 {object} model.Organization
-// @Failure 401 {object} map[string]string
-// @Failure 403 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /organization [get]
 func GetOrganization(c *gin.Context) {
-	ownerID, allowed := roleAllowed(c)
-	if !allowed {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+	uidRaw, ok := c.Get("user_id")
+	if !ok {
+		// публичный доступ без токена невозможен получить ownerID -> возвращаем 404 чтобы не раскрывать ничего
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
-	org, err := organizationService.GetByOwner(ownerID)
+	org, err := organizationService.GetByOwner(uidRaw.(uint))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})

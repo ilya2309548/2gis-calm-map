@@ -40,6 +40,30 @@ definitions:
       token:
         type: string
     type: object
+  handler.OrganizationByAddressRequest:
+    properties:
+      address:
+        type: string
+    required:
+    - address
+    type: object
+  handler.OrganizationByAddressResponse:
+    properties:
+      address:
+        type: string
+      id:
+        type: integer
+      latitude:
+        type: number
+      longitude:
+        type: number
+      map_path:
+        type: string
+      organization_type:
+        type: string
+      picture_path:
+        type: string
+    type: object
   handler.OrganizationCommentCreateRequest:
     properties:
       appearance_comment:
@@ -155,6 +179,64 @@ definitions:
         type: number
       organization_id:
         type: integer
+      params:
+        items:
+          type: string
+        type: array
+    type: object
+  handler.OrganizationParamsAverageWithOrgResponse:
+    properties:
+      address:
+        type: string
+      average:
+        type: number
+      latitude:
+        type: number
+      longitude:
+        type: number
+      organization_id:
+        type: integer
+      organization_type:
+        type: string
+      params:
+        items:
+          type: string
+        type: array
+    type: object
+  handler.OrganizationParamsWithOrgRequest:
+    properties:
+      organization_id:
+        type: integer
+      params:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - organization_id
+    - params
+    type: object
+  handler.OrganizationParamsWithOrgResponse:
+    properties:
+      average:
+        type: number
+      organization:
+        properties:
+          address:
+            type: string
+          id:
+            type: integer
+          latitude:
+            type: number
+          longitude:
+            type: number
+          map_path:
+            type: string
+          organization_type:
+            type: string
+          picture_path:
+            type: string
+        type: object
       params:
         items:
           type: string
@@ -479,8 +561,8 @@ paths:
       - auth
   /organization:
     get:
-      description: Get organization for current user (admin can also fetch for self
-        only here)
+      description: Get organization for current authenticated owner (admin/owner).
+        1:1 per owner.
       produces:
       - application/json
       responses:
@@ -704,8 +786,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
       summary: Get organization image (map or picture)
       tags:
       - organization-media
@@ -871,8 +951,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Returns (avg(param1)+...)/N for specified params. Requires JWT
-        (admin/owner of org).
+      description: Returns (avg(param1)+...)/N for specified params. Public access
+        (без проверки роли).
       parameters:
       - description: Organization params average request
         in: body
@@ -911,8 +991,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
       summary: Compute average across selected organization params
       tags:
       - organization-params
@@ -954,11 +1032,85 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
       summary: Compute averages for each organization of given type
       tags:
       - organization-params
+  /organization/params/average/with-info:
+    post:
+      consumes:
+      - application/json
+      description: Как /organization/params/average, но дополняет адресом/типом/координатами
+        и путями изображений. Публично.
+      parameters:
+      - description: Request
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.OrganizationParamsWithOrgRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.OrganizationParamsWithOrgResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Compute average and return organization info
+      tags:
+      - organization-params
+  /organization/public/by-address:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает организацию (id и основные поля) по точному адресу.
+        Публично.
+      parameters:
+      - description: Address lookup
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.OrganizationByAddressRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.OrganizationByAddressResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Public organization lookup by address
+      tags:
+      - organization
   /register:
     post:
       consumes:

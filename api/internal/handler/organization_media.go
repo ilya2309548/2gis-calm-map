@@ -191,7 +191,6 @@ func UploadOrganizationPicture(c *gin.Context) { uploadOrganizationImage(c, "pic
 // @Description Возвращает файл изображения по типу (map | picture).
 // @Tags organization-media
 // @Produce octet-stream
-// @Security BearerAuth
 // @Param organization_id path int true "Organization ID"
 // @Param kind path string true "Kind (map|picture)"
 // @Success 200 {file} byte

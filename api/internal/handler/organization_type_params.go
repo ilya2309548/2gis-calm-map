@@ -36,7 +36,6 @@ var orgParamsAggService = service.NewOrganizationParamsService()
 // @Tags organization-params
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Param input body OrganizationsParamsAverageByTypeRequest true "Request"
 // @Success 200 {object} OrganizationsParamsAverageByTypeResponse
 // @Failure 400 {object} map[string]string
@@ -44,12 +43,7 @@ var orgParamsAggService = service.NewOrganizationParamsService()
 // @Failure 403 {object} map[string]string
 // @Router /organization/params/average/by-type [post]
 func GetOrganizationsParamsAverageByType(c *gin.Context) {
-	// roles check
-	roleValue, _ := c.Get("role")
-	if roleValue != "admin" && roleValue != "owner" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-		return
-	}
+	// публичный доступ: без проверки роли
 
 	var req OrganizationsParamsAverageByTypeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

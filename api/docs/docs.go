@@ -83,7 +83,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get organization for current user (admin can also fetch for self only here)",
+                "description": "Get organization for current authenticated owner (admin/owner). 1:1 per owner.",
                 "produces": [
                     "application/json"
                 ],
@@ -369,12 +369,7 @@ const docTemplate = `{
         },
         "/organization/params/average": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns (avg(param1)+...)/N for specified params. Requires JWT (admin/owner of org).",
+                "description": "Returns (avg(param1)+...)/N for specified params. Public access (без проверки роли).",
                 "consumes": [
                     "application/json"
                 ],
@@ -444,11 +439,6 @@ const docTemplate = `{
         },
         "/organization/params/average/by-type": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "For every organization of a specified type computes (avg(p1)+...)/N and returns only those with average \u003e threshold (default 3.0).",
                 "consumes": [
                     "application/json"
@@ -498,6 +488,119 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/organization/params/average/with-info": {
+            "post": {
+                "description": "Как /organization/params/average, но дополняет адресом/типом/координатами и путями изображений. Публично.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-params"
+                ],
+                "summary": "Compute average and return organization info",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationParamsWithOrgRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationParamsWithOrgResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/organization/public/by-address": {
+            "post": {
+                "description": "Возвращает организацию (id и основные поля) по точному адресу. Публично.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization"
+                ],
+                "summary": "Public organization lookup by address",
+                "parameters": [
+                    {
+                        "description": "Address lookup",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationByAddressRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.OrganizationByAddressResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -574,11 +677,6 @@ const docTemplate = `{
         },
         "/organization/{organization_id}/image/{kind}": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Возвращает файл изображения по типу (map | picture).",
                 "produces": [
                     "application/octet-stream"
@@ -1159,6 +1257,43 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.OrganizationByAddressRequest": {
+            "type": "object",
+            "required": [
+                "address"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.OrganizationByAddressResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "map_path": {
+                    "type": "string"
+                },
+                "organization_type": {
+                    "type": "string"
+                },
+                "picture_path": {
+                    "type": "string"
+                }
+            }
+        },
         "handler.OrganizationCommentCreateRequest": {
             "type": "object",
             "required": [
@@ -1332,6 +1467,94 @@ const docTemplate = `{
                 },
                 "organization_id": {
                     "type": "integer"
+                },
+                "params": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handler.OrganizationParamsAverageWithOrgResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "average": {
+                    "type": "number"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "organization_id": {
+                    "type": "integer"
+                },
+                "organization_type": {
+                    "type": "string"
+                },
+                "params": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handler.OrganizationParamsWithOrgRequest": {
+            "type": "object",
+            "required": [
+                "organization_id",
+                "params"
+            ],
+            "properties": {
+                "organization_id": {
+                    "type": "integer"
+                },
+                "params": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handler.OrganizationParamsWithOrgResponse": {
+            "type": "object",
+            "properties": {
+                "average": {
+                    "type": "number"
+                },
+                "organization": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "latitude": {
+                            "type": "number"
+                        },
+                        "longitude": {
+                            "type": "number"
+                        },
+                        "map_path": {
+                            "type": "string"
+                        },
+                        "organization_type": {
+                            "type": "string"
+                        },
+                        "picture_path": {
+                            "type": "string"
+                        }
+                    }
                 },
                 "params": {
                     "type": "array",

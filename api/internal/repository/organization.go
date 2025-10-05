@@ -41,3 +41,9 @@ func GetOrganizationByID(id uint) (model.Organization, error) {
 func UpdateOrganizationFields(id uint, updates map[string]interface{}) error {
 	return db.DB.Model(&model.Organization{}).Where("id = ?", id).Updates(updates).Error
 }
+
+func GetOrganizationByAddress(address string) (model.Organization, error) {
+	var org model.Organization
+	err := db.DB.Where("address = ?", address).First(&org).Error
+	return org, err
+}

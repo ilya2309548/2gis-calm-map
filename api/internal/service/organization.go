@@ -28,3 +28,7 @@ func (s *OrganizationService) GetByType(orgType string) ([]model.Organization, e
 func (s *OrganizationService) GetByID(id uint) (model.Organization, error) {
 	return repository.GetOrganizationByID(id)
 }
+
+func (s *OrganizationService) GetByAddress(address string) (model.Organization, error) {
+	return repository.GetOrganizationByAddress(address)
+}
