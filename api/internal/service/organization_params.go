@@ -33,34 +33,44 @@ func (s *OrganizationParamsService) ComputeAverageAcross(p model.OrganizationPar
 		return 0, fmt.Errorf("no params provided")
 	}
 	var sum float64
+	var counted int
+	addIfPositive := func(val float64) {
+		if val > 0 { // игнорируем нули как просили
+			sum += val
+			counted++
+		}
+	}
 	for _, raw := range params {
 		name := strings.ToLower(raw)
 		switch name {
 		case "appearance":
-			sum += p.AppearanceAvg
+			addIfPositive(p.AppearanceAvg)
 		case "lighting":
-			sum += p.LightingAvg
+			addIfPositive(p.LightingAvg)
 		case "smell":
-			sum += p.SmellAvg
+			addIfPositive(p.SmellAvg)
 		case "temperature":
-			sum += p.TemperatureAvg
+			addIfPositive(p.TemperatureAvg)
 		case "tactility":
-			sum += p.TactilityAvg
+			addIfPositive(p.TactilityAvg)
 		case "signage":
-			sum += p.SignageAvg
+			addIfPositive(p.SignageAvg)
 		case "intuitiveness":
-			sum += p.IntuitivenessAvg
+			addIfPositive(p.IntuitivenessAvg)
 		case "staffattitude", "staff_attitude":
-			sum += p.StaffAttitudeAvg
+			addIfPositive(p.StaffAttitudeAvg)
 		case "peopledensity", "people_density":
-			sum += p.PeopleDensityAvg
+			addIfPositive(p.PeopleDensityAvg)
 		case "selfservice", "self_service":
-			sum += p.SelfServiceAvg
+			addIfPositive(p.SelfServiceAvg)
 		case "calmness":
-			sum += p.CalmnessAvg
+			addIfPositive(p.CalmnessAvg)
 		default:
 			return 0, fmt.Errorf("unknown param: %s", raw)
 		}
 	}
-	return sum / float64(len(params)), nil
+	if counted == 0 {
+		return 0, nil // все выбранные параметры имели среднее 0
+	}
+	return sum / float64(counted), nil
 }
