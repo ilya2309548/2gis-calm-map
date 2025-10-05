@@ -5,6 +5,162 @@
 		<title>StimulMap</title>
 		<link rel="stylesheet" href="main.css">
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+		<!-- Favicon (inline SVG data URI) -->
+		<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23537E70'/%3E%3Ctext x='32' y='40' font-size='32' text-anchor='middle' fill='white' font-family='Arial'%3ES%3C/text%3E%3C/svg%3E">
+		<!-- 2GIS MapGL JS API: async loading with callback -->
+		<script>
+			// Временный плейсхолдер. Поставь сюда свой ключ или вынеси его в отдельный файл, не коммить секреты в репозиторий.
+			window.MAPGL_KEY = '285d3b2b-96ab-4fe5-a700-12ef370d7085';
+			// Храним ссылку на карту и выбранный маркер
+			window.APP = { map: null, selectedMarker: null };
+			const GEOCODER_BASE = 'https://catalog.api.2gis.com/3.0/items/geocode';
+			async function reverseGeocode(lat, lon) {
+				const key = window.MAPGL_KEY;
+				if (!key) return { error: 'Нет ключа' };
+				const url = `${GEOCODER_BASE}?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&fields=items.point&key=${encodeURIComponent(key)}`;
+				try {
+					const res = await fetch(url);
+					const json = await res.json();
+					if (!res.ok) return { error: json?.meta?.code || 'Ошибка геокодера' };
+					const items = (json?.result?.items || []).filter(Boolean);
+					if (!items.length) return { error: 'Не найдено' };
+					return { items };
+				} catch (e) {
+					return { error: e.message };
+				}
+			}
+			function setAddressLoading() {
+				const pill = document.getElementById('selected-address');
+				if (pill){
+					pill.classList.add('loading');
+					pill.textContent = 'Определение адреса...';
+				}
+			}
+			function setAddress(text, error=false) {
+				const pill = document.getElementById('selected-address');
+				if (!pill) return;
+				pill.classList.remove('loading');
+				pill.textContent = text;
+				pill.dataset.error = error ? '1':'0';
+				pill.classList.toggle('error', !!error);
+				const createBtn = document.getElementById('open-org-dialog');
+				if (createBtn) {
+					createBtn.disabled = !!error || !text || text.startsWith('Выберите');
+				}
+			}
+			function buildBestCandidate(items){
+				// Удаляем дубликаты по id
+				const seen = new Set();
+				const unique = [];
+				for (const it of items){
+					if (!it.id || seen.has(it.id)) continue;
+					seen.add(it.id); unique.push(it);
+				}
+				// Сортируем: building > place > adm_div; наличие address_name / building_name предпочтительнее
+				const weightType = (t)=> t==='building'?3 : (t==='place'?2 : (t==='adm_div'?1:0));
+				unique.sort((a,b)=>{
+					const wa = weightType(a.type); const wb = weightType(b.type);
+					if (wb!==wa) return wb-wa;
+					const aa = (a.address_name?1:0)+(a.building_name?1:0);
+					const ab = (b.address_name?1:0)+(b.building_name?1:0);
+					if (ab!==aa) return ab-aa;
+					return 0;
+				});
+				return unique;
+			}
+			function showGeocodeOptions(items){
+				const box = document.getElementById('geocode-options');
+				if (!box) return;
+				box.innerHTML='';
+				const best = buildBestCandidate(items);
+				if (!best.length){
+					box.classList.add('hidden');
+					setAddress('Адрес не найден', true);
+					return;
+				}
+				// Если всего один — просто выбрать
+				if (best.length === 1){
+					const it = best[0];
+					setAddress(it.full_name || it.address_name || it.name || 'Неизвестный объект');
+					box.classList.add('hidden');
+					return;
+				}
+				box.classList.remove('hidden');
+				for (const it of best.slice(0,6)){
+					const btn = document.createElement('button');
+					btn.type='button';
+					btn.className='geo-option';
+					btn.textContent = it.full_name || it.address_name || it.name;
+					btn.addEventListener('click', ()=>{
+						setAddress(btn.textContent, false);
+						box.classList.add('hidden');
+						// Обновим маркер координатами выбранного элемента если есть
+						if (it.point && typeof it.point.lon==='number' && typeof it.point.lat==='number'){
+							placeSelectionMarker(it.point.lon, it.point.lat);
+						}
+					});
+					box.appendChild(btn);
+				}
+			}
+			function placeSelectionMarker(lon, lat) {
+				if (!window.APP.map) return;
+				if (window.APP.selectedMarker) {
+					window.APP.selectedMarker.destroy();
+				}
+				window.APP.selectedMarker = new mapgl.Marker(window.APP.map, {
+					coordinates: [lon, lat],
+					icon: undefined,
+				});
+			}
+			function initMap() {
+				if (!window.MAPGL_KEY || window.MAPGL_KEY.startsWith('PASTE_')) {
+					console.warn('MapGL key не задан. Установите window.MAPGL_KEY.');
+					return;
+				}
+				try {
+					const map = new mapgl.Map('map', {
+						key: window.MAPGL_KEY,
+						center: [55.31878, 25.23584],
+						zoom: 13,
+					});
+					window.APP.map = map;
+					new mapgl.Marker(map, { coordinates: [55.31878, 25.23584] });
+					map.on('click', async (e) => {
+						// e.lngLat: [lon, lat]
+						const [lon, lat] = e.lngLat;
+						placeSelectionMarker(lon, lat);
+						setAddressLoading();
+						const { items, error } = await reverseGeocode(lat, lon);
+						if (error) { console.warn('GEOCODER ERROR', error); setAddress(`Адрес не найден (${error})`, true); return; }
+						// Автовыбор лучшего кандидата, чтобы пользователь сразу мог жать "Создать организацию"
+						try {
+							const bestOrdered = buildBestCandidate(items);
+							if (bestOrdered.length) {
+								const top = bestOrdered[0];
+								setAddress(top.full_name || top.address_name || top.name || 'Неизвестный объект');
+								// Если есть несколько вариантов — показать список (до выбора пользователь может изменить)
+								if (bestOrdered.length > 1) {
+									showGeocodeOptions(bestOrdered);
+								} else {
+									const box = document.getElementById('geocode-options');
+									if (box) box.classList.add('hidden');
+								}
+							} else {
+								setAddress('Адрес не найден', true);
+							}
+						} catch(ex) {
+							console.error('Post-process geocode error', ex);
+							setAddress('Ошибка обработки адреса', true);
+						}
+					});
+				} catch (e) {
+					console.error('Ошибка инициализации карты:', e);
+				}
+			}
+		</script>
+		<script src="https://mapgl.2gis.com/api/js/v1?callback=initMap" async defer></script>
+		<script defer src="auth.js"></script>
+		<script defer src="organization.js"></script>
 		
 	  </head>
 	  
@@ -12,106 +168,240 @@
 	
 	
 <body class="index">
-	
-		  <header>
-			<a class="button attention-tertia">
-				<i class="fa fa-chevron-left" aria-hidden="true"></i>
-			</a>
-			<div>
-				<h1>Добавить отзыв</h1>
-				<a class="button medium">ул. Академическая 2</a>
-			</div>
-			
-			<a class="button attention-tertia">
-				<i class="fa fa-cog" aria-hidden="true"></i>
-			</a>
-			
-		</header>
-	<!--https://ru.stackoverflow.com/questions/69992/%D0%A2%D0%BE%D0%BB%D1%8C%D0%BA%D0%BE-%D0%B3%D0%BE%D1%80%D0%B8%D0%B7%D0%BE%D0%BD%D1%82%D0%B0%D0%BB%D1%8C%D0%BD%D0%B0%D1%8F-%D0%BF%D1%80%D0%BE%D0%BA%D1%80%D1%83%D1%82%D0%BA%D0%B0-div-->
-	<main>
-	<section>
-		<p>Выберите категорию</p>
-		<div class="slider-chooser">
-			<button class="button attention-tertia">
-				<i class="fa fa-angle-left" aria-hidden="true"></i>
-			</button>
-			<div class="parent">
-				<button class="button child">Внешний вид</button>
-				<button class="button child">Свет</button>
-				<button class="button child">Запах</button>
-				<button class="button child">Инструкции</button>
-			</div>
-			<button class="button attention-tertia">
-				<i class="fa fa-angle-right" aria-hidden="true"></i>
+	<!-- Полноэкранная карта -->
+	<div id="map" aria-label="Карта 2GIS" role="region"></div>
+
+	<!-- Кнопка авторизации / профиль -->
+	<button id="auth-btn" class="auth-btn" aria-haspopup="dialog" aria-expanded="false">
+		<span class="auth-btn__label">Войти</span>
+		<i class="fa fa-user" aria-hidden="true"></i>
+	</button>
+
+	<!-- Плавающая кнопка открытия панели -->
+	<button id="open-feedback" class="fab" aria-label="Открыть форму отзыва">
+		<i class="fa fa-commenting" aria-hidden="true"></i>
+	</button>
+
+	<!-- Оверлей затемнения -->
+	<div id="sheet-overlay" class="overlay" tabindex="-1" aria-hidden="true"></div>
+
+	<!-- Выезжающая панель с формой -->
+	<div id="feedback-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+		<div class="sheet-header">
+			<div class="drag-handle" aria-hidden="true"></div>
+			<h2 id="sheet-title">Добавить отзыв</h2>
+			<button class="icon-close" id="close-sheet" aria-label="Закрыть окно">
+				<i class="fa fa-times" aria-hidden="true"></i>
 			</button>
 		</div>
-	</section>
-	<section>
-		<p class="large">Вам комфортен внешний вид окружающей среды?</p>
-		<div class="rating-scale">
-			<button class="button b1">
-				<img src="img/icons/emoji-sad.png">
-				Нет
-			</button>
-			<button class="button b2 " id="b2">
-				<img src="img/icons/emoji-think-left.png">
-			</button>
-			<button class="button b3 " id="b3">
-				<img src="img/icons/emoji-quite.png">
-			</button>
-			<button class="button b4 " id="b4">
-				<img src="img/icons/emoji-think-right.png">
-			</button>
-			<button class="button b5">
-				<img src="img/icons/emoji.png">
-				Да
-			</button>
+		<div class="sheet-body">
+			<div class="address-line" style="flex-direction:column; gap:10px;">
+				<span id="selected-address" class="address-pill">Выберите точку на карте</span>
+				<div id="geocode-options" class="geocode-options hidden" aria-label="Варианты адреса"></div>
+				<button id="open-org-dialog" class="button attention-prima small" disabled style="align-self:center;">Создать организацию</button>
+			</div>
+			<section class="block">
+				<p class="section-title">Выберите категорию</p>
+				<div class="slider-chooser compact">
+					<button class="button attention-tertia arrow" data-shift="-1">
+						<i class="fa fa-angle-left" aria-hidden="true"></i>
+					</button>
+					<div class="parent categories" id="cat-scroll">
+						<button class="button child active">Внешний вид</button>
+						<button class="button child">Свет</button>
+						<button class="button child">Запах</button>
+						<button class="button child">Инструкции</button>
+					</div>
+					<button class="button attention-tertia arrow" data-shift="1">
+						<i class="fa fa-angle-right" aria-hidden="true"></i>
+					</button>
+				</div>
+			</section>
+			<section class="block">
+				<p class="large question">Вам комфортен внешний вид окружающей среды?</p>
+				<div class="rating-scale" id="rating-scale">
+					<button class="button b1 rate" data-value="1">
+						<img src="img/icons/emoji-sad.png" alt="Очень плохо">
+						<span>Нет</span>
+					</button>
+					<button class="button b2 rate" id="b2" data-value="2">
+						<img src="img/icons/emoji-think-left.png" alt="Скорее плохо">
+					</button>
+					<button class="button b3 rate" id="b3" data-value="3">
+						<img src="img/icons/emoji-quite.png" alt="Нейтрально">
+					</button>
+					<button class="button b4 rate" id="b4" data-value="4">
+						<img src="img/icons/emoji-think-right.png" alt="Скорее хорошо">
+					</button>
+					<button class="button b5 rate" data-value="5">
+						<img src="img/icons/emoji.png" alt="Отлично">
+						<span>Да</span>
+					</button>
+				</div>
+				<button class="link-btn" id="tell-more">Подробнее</button>
+			</section>
+			<section id="more" class="block more-collapsed" aria-hidden="true">
+				<label for="comment" class="visually-hidden">Комментарий</label>
+				<textarea id="comment" placeholder="Опишите свой опыт" rows="5"></textarea>
+				<div class="row-end">
+					<button class="link-btn" id="tell-less">Свернуть</button>
+				</div>
+			</section>
 		</div>
-		<button class="button attention-tertia" id="tell-more">Я хочу подробнее оценить свой опыт</button>
-	</section>
-	<section id="more">
-		<textarea placeholder="Напишите свой комментарий здесь"></textarea>
-		<button class="button attention-tertia" id="tell-less">Свернуть</button>
-	</section>
-	</main>
+		<div class="sheet-footer">
+			<button class="button attention-tertia ghost" id="cancel-feedback">Отмена</button>
+			<button class="button attention-prima" id="submit-feedback">Отправить</button>
+		</div>
+	</div>
 
-	<!--https://stackoverflow.com/questions/51677082/keeping-the-footer-at-the-bottom-of-the-page-in-mobile-view-->
-	<footer>
-		<button class="button   attention-tertia"> 
-			<i class="fa fa-user-o" aria-hidden="true"></i>
-		</button>
-		<a class="button attention-prima">Отправить</a>
+	<!-- Dialog создания организации -->
+	<div id="org-overlay" class="overlay" aria-hidden="true"></div>
+	<div id="org-dialog" class="org-dialog" role="dialog" aria-modal="true" aria-labelledby="org-dialog-title" aria-hidden="true">
+		<div class="org-dialog__header">
+			<h2 id="org-dialog-title">Новая организация</h2>
+			<button class="icon-close" id="org-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
+		</div>
+		<form id="org-form" novalidate>
+			<div class="field-group">
+				<label for="org-address">Адрес</label>
+				<input type="text" id="org-address" name="address" readonly />
+			</div>
+			<div class="field-group">
+				<label for="org-type">Тип организации</label>
+				<select id="org-type" name="organization_type" required>
+					<option value="shop">Магазин</option>
+					<option value="cafe">Кафе</option>
+					<option value="office">Офис</option>
+					<option value="other" selected>Другое</option>
+				</select>
+			</div>
+			<div class="field-group two-cols">
+				<div>
+					<label for="org-lat">Широта</label>
+					<input type="text" id="org-lat" name="latitude" readonly />
+				</div>
+				<div>
+					<label for="org-lon">Долгота</label>
+					<input type="text" id="org-lon" name="longitude" readonly />
+				</div>
+			</div>
+			<div class="field-group">
+				<label for="org-map-file">Карта (изображение)</label>
+				<input type="file" id="org-map-file" accept="image/*" />
+			</div>
+			<div class="field-group">
+				<label for="org-picture-file">Фото</label>
+				<input type="file" id="org-picture-file" accept="image/*" />
+			</div>
+			<div class="org-errors" id="org-errors" aria-live="assertive"></div>
+			<div class="org-dialog__footer">
+				<button type="button" class="button attention-tertia ghost" id="org-cancel">Отмена</button>
+				<button type="submit" class="button attention-prima" id="org-submit">Создать</button>
+			</div>
+		</form>
+	</div>
 
-		<button class="button attention-tertia">
-			<i class="fa fa-map" aria-hidden="true"></i>
-		</button>
-
-	</footer>
-		
-	
+	<!-- Оверлей и модальное окно авторизации -->
+	<div id="auth-overlay" class="overlay" aria-hidden="true"></div>
+	<div id="auth-dialog" class="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-dialog-title" aria-hidden="true">
+		<div class="auth-dialog__header">
+			<h2 id="auth-dialog-title">Вход</h2>
+			<button class="icon-close" id="auth-close" aria-label="Закрыть окно"><i class="fa fa-times" aria-hidden="true"></i></button>
+		</div>
+		<div class="auth-dialog__tabs" role="tablist">
+			<button class="auth-tab active" data-mode="login" role="tab" aria-selected="true">Вход</button>
+			<button class="auth-tab" data-mode="register" role="tab" aria-selected="false">Регистрация</button>
+		</div>
+		<form id="auth-form" novalidate>
+			<div class="field-group" data-field="name" style="display:none;">
+				<label for="auth-name">Имя</label>
+				<input type="text" id="auth-name" name="name" autocomplete="name" placeholder="Ваше имя" />
+			</div>
+			<div class="field-group">
+				<label for="auth-email">Email</label>
+				<input type="email" id="auth-email" name="email" autocomplete="email" required placeholder="you@example.com" />
+			</div>
+			<div class="field-group">
+				<label for="auth-password">Пароль</label>
+				<input type="password" id="auth-password" name="password" autocomplete="current-password" required placeholder="••••••••" minlength="4" />
+			</div>
+			<div class="field-group" data-field="role" style="display:none;">
+				<label for="auth-role">Роль</label>
+				<select id="auth-role" name="role">
+					<option value="user" selected>Пользователь</option>
+					<option value="admin">Администратор</option>
+				</select>
+			</div>
+			<div class="auth-errors" id="auth-errors" aria-live="assertive"></div>
+			<button type="submit" class="button attention-prima auth-submit">Продолжить</button>
+		</form>
+		<div class="auth-dialog__footer">
+			<button id="auth-logout" class="button attention-tertia ghost" style="display:none;">Выйти</button>
+		</div>
+	</div>
 </body>
-
 </html>
 
 <script>
-	let tell = document.getElementById('tell-more');
-	let less = document.getElementById('tell-less');
-	let b2 = document.getElementById('b2');
-	let b3 = document.getElementById('b3');
-	let b4 = document.getElementById('b4');
-    tell.onclick = function() {
-      document.getElementById('more').style.display = "flex";
-	  tell.style.display = "none";
-	  b2.style.display = "flex";
-	  b3.style.display = "flex";
-	  b4.style.display = "flex";
-    }
+// Управление панелью и интерактивом
+(() => {
+  const sheet = document.getElementById('feedback-sheet');
+  const overlay = document.getElementById('sheet-overlay');
+  const openBtn = document.getElementById('open-feedback');
+  const closeBtn = document.getElementById('close-sheet');
+  const cancelBtn = document.getElementById('cancel-feedback');
+  const tellMore = document.getElementById('tell-more');
+  const tellLess = document.getElementById('tell-less');
+  const more = document.getElementById('more');
+  const ratingButtons = document.querySelectorAll('.rate');
+  let currentRating = null;
 
-	less.onclick = function() {
-      document.getElementById('more').style.display = "none";
-	  tell.style.display = "block";
-	  b2.style.display = "none";
-	  b3.style.display = "none";
-	  b4.style.display = "none";
-    }
-  </script>
+  function openSheet() {
+	sheet.classList.add('open');
+	overlay.classList.add('visible');
+	overlay.removeAttribute('aria-hidden');
+	document.body.classList.add('noscroll');
+  }
+  function closeSheet() {
+	sheet.classList.remove('open');
+	overlay.classList.remove('visible');
+	overlay.setAttribute('aria-hidden','true');
+	document.body.classList.remove('noscroll');
+  }
+
+  openBtn.addEventListener('click', openSheet);
+  overlay.addEventListener('click', closeSheet);
+  closeBtn.addEventListener('click', closeSheet);
+  if (cancelBtn) cancelBtn.addEventListener('click', closeSheet);
+
+  tellMore.addEventListener('click', () => {
+	more.classList.add('expanded');
+	more.setAttribute('aria-hidden','false');
+	tellMore.style.display = 'none';
+  });
+  tellLess.addEventListener('click', () => {
+	more.classList.remove('expanded');
+	more.setAttribute('aria-hidden','true');
+	tellMore.style.display = 'inline-block';
+  });
+
+  ratingButtons.forEach(btn => {
+	btn.addEventListener('click', () => {
+	  ratingButtons.forEach(b => b.classList.remove('selected'));
+	  btn.classList.add('selected');
+	  currentRating = btn.dataset.value;
+	})
+  });
+
+  document.getElementById('submit-feedback').addEventListener('click', () => {
+	// Заглушка: можно интегрировать отправку на API
+	console.log('Submit rating:', currentRating, 'comment:', document.getElementById('comment').value);
+	closeSheet();
+  });
+
+  // Закрытие по ESC
+  document.addEventListener('keydown', (e) => {
+	if (e.key === 'Escape' && sheet.classList.contains('open')) closeSheet();
+  });
+})();
+</script>
