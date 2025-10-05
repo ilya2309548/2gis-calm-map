@@ -142,8 +142,26 @@ footer {
   padding:0;
   clear:both;
   bottom:0;
-  position: absolute; //change here   
+  position: absolute;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
 }
+
+.slider-chooser {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.rating-scale {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+
+
 /* || строка ввода */
 input{ 
   padding: var(--padding-tag-h) var(--font-size-paragraph);
@@ -202,11 +220,10 @@ input::placeholder {
 
 /* || стили кнопок */
 .button {
-  border-radius: 0;
+  border-radius: 16px;
   color: var(--color-cotton);
-  padding: var(--padding-tag-h) var(--font-size-paragraph);
+  padding: 0.5em;
   display:flex;
-  height:min-content;
   width:fit-content;
   cursor:pointer;
 }
@@ -221,7 +238,7 @@ input::placeholder {
 .button.attention-tertia {
   background-color: var(--color-abyss);
   border-color: var(--color-nettle);
-  border-style: solid;
+  border: none;
 }
 .button.attention-prima:hover {
   background-color: var(--color-cedar);
@@ -266,6 +283,7 @@ input::placeholder {
   color:var(--color-cotton);
   font-size: 1.5em;
   padding: 0 0;
+
 }
 .button.icon:hover{
   color:var(--color-slush);
@@ -293,88 +311,7 @@ input::placeholder {
 .button.icon.attention-s:disabled{
   color:var(--color-forecast);
 }
-/* || стили тегов и категорий */
-.tc {
-  text-decoration:none;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  width: fit-content;
-  padding:var(--padding-tag-v) var(--padding-tag-h);
-  margin:var(--padding-tag-v) var(--padding-tag-h);
-  cursor: pointer;
-}
 
-.tag {
-  background-color: var(--color-mint);
-  cursor: pointer;
-}
-
-.tag:hover {
-  background-color: var(--color-moss);
-}
-
-.tag-cross {
-  display: none;
-}
-
-.deletable:hover .tag-cross {
-  display: block;
-}
-
-.tag-cross:hover {
-  color:var(--color-slush);
-}
-
-a.cat {
-  display: flex;
-  flex-direction: column;
-}
-
-.cat {
-  border: 2px solid;
-  border-color: var(--color-mint);
-  padding-top: 0;
-  padding-bottom: calc(1.4*var(--font-size-paragraph));
-  height:0.5em;
-  cursor: pointer;
-}
-
-
-.choosable:hover {
-  border-color: var(--color-moss);
-}
-
-.tc > svg {
-  overflow: visible;
-  margin-top: calc(-2*var(--font-size-paragraph));
-  margin-left: -11.5px;
-  fill:none;
-  stroke:var(--color-mint);
-  stroke-width:4.2px;
-  stroke-linecap:square;
-}
-
-.choosable:hover svg {
-  stroke:var(--color-moss);
-}
-
-.add {
-  font-size: 2.2em;
-  text-decoration: none;
-  font-weight:300;
-  color: var(--color-cotton);
-  background-color: var(--color-persimmon);
-  padding: 0;
-  display: inline-block;
-  width: 1.1em;
-  height: 1.1em;
-  border: none;
-}
-
-.add:hover {
-  background-color: var(--color-burn);
-}
 
 
 /* || стили скролл-баров */
@@ -394,75 +331,6 @@ input[type="checkbox"],[type="range"] {
 }
 
 
-/* Customize the label (the container) */
-/*.container {
-  display: block;
-  position: relative;
-  padding-left: 35px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  font-size: 22px;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Hide the browser's default checkbox */
-/*.container input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
-}
-
-/* Create a custom checkbox */
-/*.checkmark {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 25px;
-  width: 25px;
-  background-color: #eee;
-}
-
-/* On mouse-over, add a grey background color */
-/*.container:hover input ~ .checkmark {
-  background-color: #ccc;
-}
-
-/* When the checkbox is checked, add a blue background */
-/*.container input:checked ~ .checkmark {
-  background-color: #2196F3;
-}
-
-/* Create the checkmark/indicator (hidden when not checked) */
-/*.checkmark:after {
-  content: "";
-  position: absolute;
-  display: none;
-}
-
-/* Show the checkmark when checked */
-/*.container input:checked ~ .checkmark:after {
-  display: block;
-}
-
-/* Style the checkmark/indicator */
-/*.container .checkmark:after {
-  left: 9px;
-  top: 5px;
-  width: 5px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 3px 3px 0;
-  -webkit-transform: rotate(45deg);
-  -ms-transform: rotate(45deg);
-  transform: rotate(45deg);
-}
-*/
-
 
 /* || меню хэдера */
 header {
@@ -471,39 +339,14 @@ header {
   display:flex;
   justify-content: space-between;
   align-items:center;
+  width: 100%;
 }
 
-header a{
-  color: var(--color-cotton);
-  text-decoration: none;
-  font-size: var(--font-size-h4);
-}
-/*замена*/
-header a.logo {
-  font-size: var(--font-size-h1);
-  font-style: italic;
-  font-weight: 700;
+header div {
+  display: flex;
+  flex-direction: column;
 }
 
-header a:not(.logo,.button):hover {
-  color:var(--color-slush);
-  text-decoration: underline;
-}
-
-header a.active:not(.logo) {
-  font-weight: 700;
-  color: var(--color-nettle);
-  cursor:default;
-}
-
-header a.active:hover {
-  color:var(--color-cotton);
-  text-decoration: none;
-}
-
-header form {
-  max-width: 300px;
-}
  /*|| стили диалоговых окон*/
  dialog {
   background-color: var(--color-pine);
@@ -559,174 +402,6 @@ body{
   max-width: 1200px;
 }
 
-/* || галлерея */
-.dropdown {
-  margin-left: 8px;
-}
-/*
-@media (min-width: 1440px) {
-  .dropdown {
-    width:1140px;
-  }
-}
-@media only screen and(min-width: 1155px), (max-width: 1440px)  {
-  .dropdown {
-    width:905px;
-  }
-}
-@media (max-width: 1155px) {
-  .dropdown {
-    width:670px;
-  }
-}*/
-
-#gallery {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content:space-between;
-  gap: 20px;
-}
- 
-.min-img {
-  width: 200px;
-  height: 200px;
-  object-fit:cover;
-  cursor: pointer;
-  opacity: 0.5;
-}
-
-.min-painting {
-  position: relative;
-}
-
-.min-painting>svg{
-  position: absolute;
-  right:1em;
-  
-}
-
-.min-painting h4 {
-  width: 200px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
-  text-decoration: none;
-}
-
-.painting-info {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top:0.4em;
-}
-
-.min-painting .title {
-  width: auto;
-  padding-right:6px;
-  max-width:140px;
-  margin-top:0;
-  margin-bottom: 0;
-}
-
-.min-painting .year {
-  width:min-content;
-  margin-top:0;
-  margin-bottom: 0;
-}
-
-.min-painting .name {
-  margin-top: 0;
-  margin-bottom:0.5em;
-}
-
-.min-painting{
-  width:min-content;
-  padding:0.5em;
-  text-decoration: none;
-  position:relative;
-  margin-bottom: 3em;
-}
-
-.min-painting>div{
-  position: absolute;
-  margin-left: -0.5em;
-  padding-left: 0.5em;
-}
-
-.min-painting:hover>div{
-  background-color: var(--color-bergamot);
-  z-index: 98;
-}
-
-.min-painting:hover {
-  background-color: var(--color-bergamot);
-}
-
-.min-painting>h4:hover{
-  position: absolute;
-}
-
-.min-painting:hover h4{
-  white-space: wrap;
-  min-width: 200px;
-}
-
-.min-painting:hover img{
-  opacity: 1;
-}
-
-.min-test {
-  width: 200px;
-  height: 200px;
-  text-decoration: none;
-  background-size: cover;
-  display: grid;
-  grid-template-rows:3fr 1fr;
-}
-
-.test-name {
-  margin: auto 0.5em;
-  text-align: left;
-  z-index: 1;
-}
-
-.min-test .button {
-  margin: auto;
-  margin-bottom: 1.5em;
-  z-index: 1;
-}
-
-.min-test div {
-  width: 200px;
-  height: 200px;
-  position:absolute;
-  background-color: rgba(47, 60, 57, 0.75);
-  z-index: 0;
-}
-
-.min-test:hover div {
-  background-color: rgba(17, 21, 18, 0.75);
-}
-
-.min-test:hover h4 {
-  font-weight: 700;
-}
-
-.tests_ready  button {
-  margin:auto;
-  margin-top:30px;
-}
-
-
-
-.create.headers-switch,
-.button.create,
-.tests_ready_main .headers-switch {
-  width:fit-content;
-  margin:auto;
-}
 
 /* || Фильтр и дропдаун*/
 #myDropdown {
@@ -1200,9 +875,11 @@ label {
 
 
 
+
+
 .parent {
-    width: 400px;
-    height:80px;
+    width: 100%;
+    height:160px;
     overflow: hidden;
     overflow-x: scroll;
     white-space:nowrap;
